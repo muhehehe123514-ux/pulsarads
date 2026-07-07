@@ -115,6 +115,8 @@ function renderPainel() {
     : `<tr><td colspan="9" style="text-align:center;color:var(--muted)">Nenhuma campanha ainda.</td></tr>`;
 
   renderCampChart(camps);
+  // ROAS real e datalist do Rastreador dependem das campanhas
+  if (window.renderVendas) renderVendas();
 }
 
 function roundedTopRect(x, y, w, h, r) {

@@ -10,6 +10,10 @@ Tudo roda **100% no navegador** — site estático, sem backend, sem API paga, s
 
 | Ferramenta | O que faz |
 |---|---|
+| 🔥 Explorador de Ofertas | Filtros por nicho/país/idioma/mídia + bateria de pesquisas automáticas na biblioteca de anúncios do Facebook, com fila e pesquisas salvas |
+| 💰 Rastreador de Vendas | Atribuição estilo Utmify: vendas por campanha e criativo, ROAS/CPA reais cruzando com o painel, import CSV do checkout |
+| 🧭 Modelador Low Ticket | Oferta, copy, funil (bump + upsell), estrutura de campanha e checklist prontos a partir de 4 campos |
+| 🎯 UTMs Dinâmicas | Macros de rastreamento do Meta ({{campaign.name}}…), Google (ValueTrack) e TikTok, no padrão Utmify |
 | 📊 Painel de Campanhas | KPIs (lucro, ROAS, CPC, CTR), gráfico investimento vs. faturamento, dados no localStorage, export JSON |
 | ✍️ Gerador de Headlines | 10 títulos persuasivos por clique, baseados em frameworks de copywriting |
 | 🔁 Reescritor de Copy | Variações com sinônimos e conectores, mantendo a estrutura |

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PulsarAds — Plataforma</title>
-  <meta name="description" content="Painel de campanhas e 14 ferramentas gratuitas para tráfego pago, rodando 100% no seu navegador." />
+  <meta name="description" content="Painel de campanhas, rastreador de vendas, explorador de ofertas e 18 ferramentas gratuitas para tráfego pago, rodando 100% no seu navegador." />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -36,6 +36,10 @@
       <nav>
         <div class="side-group">Visão geral</div>
         <a href="#painel" class="side-link" data-tool="painel"><span class="si">📊</span> Painel de Campanhas</a>
+        <a href="#vendas" class="side-link" data-tool="vendas"><span class="si">💰</span> Rastreador de Vendas <span class="side-new">novo</span></a>
+        <div class="side-group">Oportunidades</div>
+        <a href="#ofertas" class="side-link" data-tool="ofertas"><span class="si">🔥</span> Explorador de Ofertas <span class="side-new">novo</span></a>
+        <a href="#lowticket" class="side-link" data-tool="lowticket"><span class="si">🧭</span> Modelador Low Ticket <span class="side-new">novo</span></a>
         <div class="side-group">Copy &amp; texto</div>
         <a href="#headlines" class="side-link" data-tool="headlines"><span class="si">✍️</span> Gerador de Headlines</a>
         <a href="#copy" class="side-link" data-tool="copy"><span class="si">🔁</span> Reescritor de Copy</a>
@@ -45,6 +49,7 @@
         <a href="#contador" class="side-link" data-tool="contador"><span class="si">🔢</span> Contador de Caracteres</a>
         <div class="side-group">Tráfego</div>
         <a href="#utm" class="side-link" data-tool="utm"><span class="si">🔗</span> Gerador de UTMs</a>
+        <a href="#macros" class="side-link" data-tool="macros"><span class="si">🎯</span> UTMs Dinâmicas <span class="side-new">novo</span></a>
         <a href="#escala" class="side-link" data-tool="escala"><span class="si">📈</span> Simulador de Escala</a>
         <a href="#radar" class="side-link" data-tool="radar"><span class="si">🛰️</span> Radar de Concorrentes</a>
         <div class="side-group">Estúdio</div>
@@ -418,6 +423,208 @@
         </div>
       </section>
 
+      <!-- ===== EXPLORADOR DE OFERTAS ===== -->
+      <section class="panel" id="tool-ofertas">
+        <div class="panel-head">
+          <h2>🔥 Explorador de Ofertas</h2>
+          <p>Encontre ofertas escalando na biblioteca de anúncios do Facebook: escolha o nicho, aplique filtros e dispare uma bateria de pesquisas prontas com um clique.</p>
+        </div>
+        <div class="card">
+          <div class="form-grid">
+            <label>Nicho <select id="opNiche"></select></label>
+            <label>País
+              <select id="opCountry">
+                <option value="BR" selected>Brasil</option><option value="US">Estados Unidos</option>
+                <option value="PT">Portugal</option><option value="MX">México</option>
+                <option value="AR">Argentina</option><option value="ES">Espanha</option><option value="ALL">Todos</option>
+              </select>
+            </label>
+            <label>Idioma dos anúncios
+              <select id="opLang">
+                <option value="pt" selected>Português</option><option value="es">Espanhol</option>
+                <option value="en">Inglês</option><option value="">Qualquer</option>
+              </select>
+            </label>
+            <label>Tipo de mídia
+              <select id="opMedia">
+                <option value="all" selected>Todas</option><option value="video">Só vídeo</option><option value="image">Só imagem</option>
+              </select>
+            </label>
+            <label>Qualificador de intenção
+              <select id="opQualifier">
+                <option value="" selected>Automático (mistura)</option>
+                <option value="ebook">ebook</option><option value="curso online">curso online</option>
+                <option value="planilha">planilha</option><option value="apostila">apostila</option>
+                <option value="método">método</option><option value="acesso imediato">acesso imediato</option>
+              </select>
+            </label>
+            <label>Palavra-chave extra (opcional) <input type="text" id="opCustomKw" placeholder="Ex.: bolo no pote, tráfego pago…" /></label>
+            <div class="form-actions">
+              <button class="btn btn-primary btn-sm" id="btnOpGenerate">Gerar bateria de pesquisas 🔥</button>
+            </div>
+          </div>
+        </div>
+        <div class="card" id="opScanCard" hidden>
+          <div class="card-head-row">
+            <h3>Pesquisa automática</h3>
+            <span class="hint" id="opScanProgress"></span>
+          </div>
+          <div class="form-actions" style="margin-bottom:14px">
+            <button class="btn btn-primary btn-sm" id="btnOpNext">▶ Abrir próxima pesquisa</button>
+            <button class="btn btn-ghost btn-sm" id="btnOpAll">Abrir todas de uma vez</button>
+            <button class="btn btn-ghost btn-sm" id="btnOpReset">Reiniciar fila</button>
+          </div>
+          <div class="output-list" id="opSearchList"></div>
+        </div>
+        <div class="card">
+          <h3>Pesquisas salvas</h3>
+          <div class="output-list" id="opSaved"><p class="hint">Nenhuma pesquisa salva ainda. Gere uma bateria e clique em "Salvar".</p></div>
+        </div>
+        <div class="card">
+          <h3>✅ Checklist: como reconhecer uma oferta escalando</h3>
+          <ul class="check-plain">
+            <li><strong>Volume:</strong> o mesmo anunciante com 10, 20, 50+ anúncios ativos da mesma oferta.</li>
+            <li><strong>Tempo no ar:</strong> anúncios rodando há 2+ semanas (veja a data de início no card da Ad Library) — quem gasta por semanas está lucrando.</li>
+            <li><strong>Variações:</strong> vários criativos diferentes do mesmo produto = fase de escala, não de teste.</li>
+            <li><strong>Funil:</strong> clique no anúncio e analise a página — low ticket costuma ter promessa direta, preço até R$ 47 e order bump no checkout.</li>
+            <li><strong>Recorrência:</strong> anote no Rastreador as ofertas que você vê repetidas em dias diferentes — persistência é o sinal mais forte.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== RASTREADOR DE VENDAS ===== -->
+      <section class="panel" id="tool-vendas">
+        <div class="panel-head">
+          <h2>💰 Rastreador de Vendas</h2>
+          <p>Atribuição estilo Utmify, versão local: registre (ou importe) suas vendas com campanha e criativo, e descubra de onde vem o lucro de verdade.</p>
+        </div>
+        <div class="kpi-row">
+          <div class="kpi-tile"><div class="kpi-lbl">Receita rastreada</div><div class="kpi-val" id="slRevenue">R$ 0,00</div></div>
+          <div class="kpi-tile"><div class="kpi-lbl">Vendas</div><div class="kpi-val" id="slCount">0</div></div>
+          <div class="kpi-tile"><div class="kpi-lbl">Ticket médio</div><div class="kpi-val" id="slTicket">—</div></div>
+          <div class="kpi-tile"><div class="kpi-lbl">ROAS real</div><div class="kpi-val" id="slRoas">—</div><div class="kpi-delta" id="slRoasNote"></div></div>
+        </div>
+        <div class="card">
+          <h3>Nova venda</h3>
+          <form id="saleForm" class="form-grid">
+            <label>Produto <input type="text" id="sProduct" placeholder="Ex.: Ebook Receitas Fit" required /></label>
+            <label>Valor (R$) <input type="number" id="sValue" min="0" step="0.01" placeholder="27.00" required /></label>
+            <label>Campanha (utm_campaign) <input type="text" id="sCampaign" list="campNames" placeholder="Ex.: CBO Escala — Oferta A" /></label>
+            <datalist id="campNames"></datalist>
+            <label>Criativo (utm_content) <input type="text" id="sContent" placeholder="Ex.: criativo-03" /></label>
+            <label>Data <input type="date" id="sDate" /></label>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-sm">Registrar venda 💰</button>
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer">Importar CSV<input type="file" id="slCsv" accept=".csv,text/csv" hidden /></label>
+              <button type="button" class="btn btn-ghost btn-sm" id="btnSlExport">Exportar JSON</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btnSlSample">Carregar exemplo</button>
+              <button type="button" class="btn btn-ghost btn-sm btn-danger" id="btnSlClear">Limpar tudo</button>
+            </div>
+          </form>
+          <p class="hint">CSV aceito: colunas com nomes tipo <code>valor</code>, <code>produto</code>, <code>utm_campaign</code>, <code>utm_content</code>, <code>data</code> (a ordem não importa). Exporte do seu checkout e importe aqui.</p>
+        </div>
+        <div class="card">
+          <div class="card-head-row">
+            <h3>Receita por campanha</h3>
+          </div>
+          <div class="viz-root" id="salesChart"><div class="viz-empty">Registre vendas (ou carregue o exemplo) pra ver o gráfico.</div></div>
+        </div>
+        <div class="card">
+          <h3>Atribuição por campanha</h3>
+          <div class="table-wrap">
+            <table class="data-table" id="attrCampTable">
+              <thead><tr><th>Campanha</th><th>Vendas</th><th>Receita</th><th>% da receita</th><th>Investido (painel)</th><th>ROAS</th><th>CPA</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Atribuição por criativo</h3>
+          <div class="table-wrap">
+            <table class="data-table" id="attrContentTable">
+              <thead><tr><th>Criativo</th><th>Vendas</th><th>Receita</th><th>% da receita</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Últimas vendas</h3>
+          <div class="table-wrap">
+            <table class="data-table" id="salesTable">
+              <thead><tr><th>Data</th><th>Produto</th><th>Valor</th><th>Campanha</th><th>Criativo</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== UTMS DINÂMICAS ===== -->
+      <section class="panel" id="tool-macros">
+        <div class="panel-head">
+          <h2>🎯 UTMs Dinâmicas</h2>
+          <p>Macros que as plataformas de anúncio substituem automaticamente pelo nome da campanha, conjunto e criativo — o mesmo padrão usado pelo Utmify. Cole uma vez no anúncio e rastreie tudo.</p>
+        </div>
+        <div class="card">
+          <div class="form-grid">
+            <label>Plataforma
+              <select id="mcPlatform">
+                <option value="meta" selected>Meta Ads (Facebook/Instagram)</option>
+                <option value="google">Google Ads</option>
+                <option value="tiktok">TikTok Ads</option>
+              </select>
+            </label>
+            <label>URL da sua página (opcional) <input type="url" id="mcUrl" placeholder="https://minhapagina.com.br/oferta" /></label>
+          </div>
+          <h3 style="margin-top:20px">Sufixo pronto pra colar</h3>
+          <div class="utm-result" id="mcSuffix"></div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm" id="btnMcCopySuffix">Copiar sufixo 🎯</button>
+            <button class="btn btn-ghost btn-sm" id="btnMcCopyUrl" hidden>Copiar URL completa</button>
+          </div>
+          <p class="hint" id="mcWhere"></p>
+        </div>
+        <div class="card">
+          <h3>O que cada macro vira</h3>
+          <div class="table-wrap">
+            <table class="data-table" id="mcTable">
+              <thead><tr><th>Macro</th><th>Vira o quê no clique</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="hint">Depois é só cruzar esses valores com o 💰 Rastreador de Vendas: o utm_campaign preenche a coluna "Campanha" e o utm_content a coluna "Criativo".</p>
+        </div>
+      </section>
+
+      <!-- ===== MODELADOR LOW TICKET ===== -->
+      <section class="panel" id="tool-lowticket">
+        <div class="panel-head">
+          <h2>🧭 Modelador Low Ticket</h2>
+          <p>O passo a passo de "modelar e anunciar um low ticket em minutos": preencha 4 campos e receba oferta, copy, funil, estrutura de campanha e checklist — tudo pronto pra executar.</p>
+        </div>
+        <div class="card">
+          <div class="form-grid">
+            <label>Nicho <select id="ltNiche"></select></label>
+            <label>Tema do produto <input type="text" id="ltTopic" placeholder="Ex.: marmitas fit pra semana" /></label>
+            <label>Formato
+              <select id="ltFormat">
+                <option>Ebook</option><option>Curso rápido em vídeo</option><option>Planilha</option>
+                <option>Pack de templates</option><option>Apostila</option><option>Desafio de 7 dias</option>
+              </select>
+            </label>
+            <label>Preço
+              <select id="ltPrice">
+                <option value="19.90">R$ 19,90</option><option value="27" selected>R$ 27,00</option>
+                <option value="37">R$ 37,00</option><option value="47">R$ 47,00</option>
+              </select>
+            </label>
+            <div class="form-actions">
+              <button class="btn btn-primary btn-sm" id="btnLtGenerate">Montar meu plano 🧭</button>
+            </div>
+          </div>
+        </div>
+        <div class="output-list" id="ltOut"></div>
+      </section>
+
     </main>
   </div>
 
@@ -425,5 +632,6 @@
   <div class="viz-tooltip" id="vizTooltip" hidden></div>
 
   <script src="js/app.js"></script>
+  <script src="js/tools2.js"></script>
 </body>
 </html>

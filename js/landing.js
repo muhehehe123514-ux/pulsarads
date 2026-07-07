@@ -54,6 +54,10 @@ document.querySelectorAll("[data-count]").forEach((el) => counterIO.observe(el))
 
 // ---------- Tools grid ----------
 const TOOLS = [
+  { id: "ofertas",     name: "Explorador de Ofertas",   desc: "Filtros por nicho, país e mídia + bateria de pesquisas automáticas na biblioteca de anúncios do Facebook.", icon: "M13 2L3 14h7l-1 8 10-12h-7l1-8z", isNew: true },
+  { id: "vendas",      name: "Rastreador de Vendas",    desc: "Atribuição por campanha e criativo com ROAS e CPA reais — registre vendas ou importe CSV do checkout.", icon: "M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6", isNew: true },
+  { id: "lowticket",   name: "Modelador Low Ticket",    desc: "Oferta, copy, funil, campanha e checklist prontos pra lançar um low ticket em minutos.", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2", isNew: true },
+  { id: "macros",      name: "UTMs Dinâmicas",          desc: "Macros de rastreamento do Meta, Google e TikTok no padrão Utmify — cole uma vez, rastreie tudo.", icon: "M22 12h-4l-3 9L9 3l-3 9H2", isNew: true },
   { id: "painel",      name: "Painel de Campanhas",     desc: "Acompanhe investimento, faturamento, ROAS, CPC e CTR com gráficos — dados salvos só no seu navegador.", icon: "M3 20V10m6 10V4m6 16v-7m6 7V8" },
   { id: "headlines",   name: "Gerador de Headlines",    desc: "10 títulos persuasivos por clique, montados com frameworks clássicos de copywriting.", icon: "M4 6h16M4 12h10M4 18h7" },
   { id: "copy",        name: "Reescritor de Copy",      desc: "Gere variações da sua copy trocando conectores e sinônimos, mantendo a estrutura persuasiva.", icon: "M16 3H8a2 2 0 00-2 2v14l6-3 6 3V5a2 2 0 00-2-2z" },
@@ -78,7 +82,7 @@ if (grid) {
       <div class="tool-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${t.icon}"/></svg>
       </div>
-      <h4>${t.name}</h4>
+      <h4>${t.name}${t.isNew ? ' <span class="tool-new">novo</span>' : ""}</h4>
       <p>${t.desc}</p>
       <span class="tc-go">Usar agora
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>

@@ -89,6 +89,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.15; letter-spa
   background: var(--card);
   color: var(--text);
   border: 1px solid var(--border);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 .btn-ghost:hover { background: var(--card-hover); border-color: var(--border-strong); transform: translateY(-2px); }
@@ -104,8 +105,8 @@ h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.15; letter-spa
 }
 .nav.scrolled {
   background: rgba(7, 7, 13, 0.78);
-  backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
   border-bottom-color: var(--border);
 }
 .nav-inner {
@@ -172,8 +173,8 @@ h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.15; letter-spa
     linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
   background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 75% 65% at 50% 35%, #000 30%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 35%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 35%, #000 30%, transparent 75%);
   pointer-events: none;
 }
 .hero-badge {
@@ -241,6 +242,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.15; letter-spa
   border-radius: 20px;
   border: 1px solid var(--border);
   background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   box-shadow: 0 40px 120px rgba(0, 0, 0, 0.6), 0 0 80px rgba(124, 58, 237, 0.12);
   overflow: hidden;
@@ -381,6 +383,19 @@ section { position: relative; padding: 100px 0; }
 }
 .tool-icon svg { width: 22px; height: 22px; stroke: var(--violet-soft); }
 .tool-card h4 { font-size: 17px; margin-bottom: 8px; font-weight: 600; }
+.tool-new {
+  display: inline-block;
+  vertical-align: 2px;
+  margin-left: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #0c0c16;
+  background: var(--grad);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
 .tool-card p { font-size: 14px; color: var(--text-2); line-height: 1.55; }
 .tool-card .tc-go {
   margin-top: 16px;
@@ -573,6 +588,7 @@ footer {
     top: 72px; left: 0; right: 0;
     flex-direction: column;
     background: rgba(7, 7, 13, 0.97);
+    -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
     padding: 24px;
     gap: 20px;

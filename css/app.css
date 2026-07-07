@@ -4,6 +4,8 @@
 
 .app-body { background: var(--bg); min-height: 100vh; }
 
+[hidden] { display: none !important; }
+
 /* ---------- Topbar ---------- */
 .app-topbar {
   position: fixed;
@@ -15,6 +17,7 @@
   gap: 18px;
   padding: 0 20px;
   background: rgba(7, 7, 13, 0.85);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--border);
 }
@@ -355,6 +358,36 @@ mark.bw-mark { background: rgba(230, 103, 103, 0.3); color: var(--text); border-
 .limit-bar { height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
 .limit-fill { height: 100%; border-radius: 999px; background: var(--grad-btn); transition: width 0.25s ease; }
 .limit-fill.over { background: var(--bad); }
+
+/* ---------- Novidades / Explorador / Rastreador ---------- */
+.side-new {
+  margin-left: auto;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #0c0c16;
+  background: var(--grad);
+  padding: 2px 7px;
+  border-radius: 999px;
+  flex: none;
+}
+.check-plain { list-style: none; display: grid; gap: 12px; }
+.check-plain li { font-size: 14px; color: var(--text-2); line-height: 1.6; padding-left: 26px; position: relative; }
+.check-plain li::before { content: "✓"; position: absolute; left: 0; color: var(--cyan); font-weight: 700; }
+.check-plain strong { color: var(--text); }
+code {
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-family: Consolas, monospace;
+  font-size: 0.9em;
+  color: var(--violet-soft);
+}
+.out-item.done { opacity: 0.45; }
+.out-item .out-actions { display: flex; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.mc-macro { color: var(--cyan); font-family: Consolas, monospace; font-size: 12.5px; }
 
 /* ---------- Toast ---------- */
 .toast {
