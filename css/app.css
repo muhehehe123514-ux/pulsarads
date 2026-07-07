@@ -114,7 +114,7 @@
 .form-grid.one-col { grid-template-columns: 1fr; }
 .form-grid label, .lbl-block { display: flex; flex-direction: column; gap: 7px; font-size: 13px; font-weight: 600; color: var(--text-2); }
 .lbl-block { margin-bottom: 16px; }
-input[type="text"], input[type="url"], input[type="number"], select, textarea {
+input[type="text"], input[type="url"], input[type="number"], input[type="date"], select, textarea {
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -132,6 +132,7 @@ input:focus, select:focus, textarea:focus {
 }
 textarea { resize: vertical; line-height: 1.6; }
 select option { background: #14141f; }
+input[type="date"] { color-scheme: dark; }
 input[type="range"] { accent-color: var(--violet); padding: 6px 0; }
 .form-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; grid-column: 1 / -1; margin-top: 6px; }
 .btn-danger { color: var(--bad); border-color: rgba(230, 103, 103, 0.35); }
