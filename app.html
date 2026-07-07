@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulsarAds — Plataforma</title>
+  <meta name="description" content="Painel de campanhas e 14 ferramentas gratuitas para tráfego pago, rodando 100% no seu navegador." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body class="app-body">
+
+  <header class="app-topbar">
+    <button class="app-burger" id="appBurger" aria-label="Abrir menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <a href="index.html" class="logo">
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#a78bfa"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs>
+        <circle cx="16" cy="16" r="14" stroke="url(#lg)" stroke-width="2.5"/>
+        <path d="M6 16h5l3-7 4 14 3-7h5" stroke="url(#lg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Pulsar<span class="grad-text">Ads</span>
+    </a>
+    <span class="topbar-badge">100% grátis · dados locais</span>
+    <a href="index.html" class="btn btn-ghost btn-sm topbar-back">← Voltar ao site</a>
+  </header>
+
+  <div class="app-shell">
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="app-sidebar" id="appSidebar">
+      <nav>
+        <div class="side-group">Visão geral</div>
+        <a href="#painel" class="side-link" data-tool="painel"><span class="si">📊</span> Painel de Campanhas</a>
+        <div class="side-group">Copy &amp; texto</div>
+        <a href="#headlines" class="side-link" data-tool="headlines"><span class="si">✍️</span> Gerador de Headlines</a>
+        <a href="#copy" class="side-link" data-tool="copy"><span class="si">🔁</span> Reescritor de Copy</a>
+        <a href="#frameworks" class="side-link" data-tool="frameworks"><span class="si">🧱</span> Frameworks de Copy</a>
+        <a href="#bloqueadas" class="side-link" data-tool="bloqueadas"><span class="si">🚦</span> Palavras Sensíveis</a>
+        <a href="#estilizado" class="side-link" data-tool="estilizado"><span class="si">🔤</span> Texto Estilizado</a>
+        <a href="#contador" class="side-link" data-tool="contador"><span class="si">🔢</span> Contador de Caracteres</a>
+        <div class="side-group">Tráfego</div>
+        <a href="#utm" class="side-link" data-tool="utm"><span class="si">🔗</span> Gerador de UTMs</a>
+        <a href="#escala" class="side-link" data-tool="escala"><span class="si">📈</span> Simulador de Escala</a>
+        <a href="#radar" class="side-link" data-tool="radar"><span class="si">🛰️</span> Radar de Concorrentes</a>
+        <div class="side-group">Estúdio</div>
+        <a href="#criativo" class="side-link" data-tool="criativo"><span class="si">🎨</span> Estúdio de Criativos</a>
+        <a href="#audio" class="side-link" data-tool="audio"><span class="si">🔊</span> Gerador de Áudio</a>
+        <a href="#transcritor" class="side-link" data-tool="transcritor"><span class="si">🎙️</span> Transcritor por Voz</a>
+        <a href="#metadados" class="side-link" data-tool="metadados"><span class="si">🧹</span> Limpador de Metadados</a>
+      </nav>
+      <div class="side-foot">
+        <a href="https://github.com/muhehehe123514-ux/pulsarads" target="_blank" rel="noopener">⭐ Código no GitHub</a>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main class="app-main">
+
+      <!-- ===== PAINEL ===== -->
+      <section class="panel" id="tool-painel">
+        <div class="panel-head">
+          <h2>📊 Painel de Campanhas</h2>
+          <p>Registre suas campanhas e acompanhe os KPIs. Tudo fica salvo apenas no seu navegador (localStorage).</p>
+        </div>
+
+        <div class="kpi-row" id="kpiRow">
+          <div class="kpi-tile"><div class="kpi-lbl">Investido</div><div class="kpi-val" id="kpiInvest">R$ 0,00</div></div>
+          <div class="kpi-tile"><div class="kpi-lbl">Faturado</div><div class="kpi-val" id="kpiRevenue">R$ 0,00</div></div>
+          <div class="kpi-tile"><div class="kpi-lbl">Lucro</div><div class="kpi-val" id="kpiProfit">R$ 0,00</div><div class="kpi-delta" id="kpiProfitDelta"></div></div>
+          <div class="kpi-tile"><div class="kpi-lbl">ROAS médio</div><div class="kpi-val" id="kpiRoas">—</div></div>
+        </div>
+
+        <div class="card">
+          <h3>Nova campanha</h3>
+          <form id="campForm" class="form-grid">
+            <label>Nome da campanha <input type="text" id="cName" placeholder="Ex.: CBO Escala — Oferta X" required /></label>
+            <label>Plataforma
+              <select id="cPlatform">
+                <option>Meta Ads</option><option>Google Ads</option><option>TikTok Ads</option><option>Kwai Ads</option><option>Outra</option>
+              </select>
+            </label>
+            <label>Investimento (R$) <input type="number" id="cInvest" min="0" step="0.01" placeholder="500.00" required /></label>
+            <label>Faturamento (R$) <input type="number" id="cRevenue" min="0" step="0.01" placeholder="1500.00" required /></label>
+            <label>Cliques <input type="number" id="cClicks" min="0" step="1" placeholder="320" /></label>
+            <label>Impressões <input type="number" id="cImpr" min="0" step="1" placeholder="15000" /></label>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-sm">Adicionar campanha</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btnSample">Carregar exemplo</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btnExport">Exportar JSON</button>
+              <button type="button" class="btn btn-ghost btn-sm btn-danger" id="btnClear">Limpar tudo</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-head-row">
+            <h3>Investimento vs. Faturamento por campanha</h3>
+            <div class="viz-legend" id="chartLegend">
+              <span class="lg-item"><span class="lg-swatch" style="background:var(--series-1)"></span>Investido</span>
+              <span class="lg-item"><span class="lg-swatch" style="background:var(--series-2)"></span>Faturado</span>
+            </div>
+          </div>
+          <div class="viz-root" id="campChart"><div class="viz-empty">Adicione campanhas (ou carregue o exemplo) pra ver o gráfico.</div></div>
+        </div>
+
+        <div class="card">
+          <h3>Campanhas</h3>
+          <div class="table-wrap">
+            <table class="data-table" id="campTable">
+              <thead><tr><th>Campanha</th><th>Plataforma</th><th>Investido</th><th>Faturado</th><th>Lucro</th><th>ROAS</th><th>CPC</th><th>CTR</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== HEADLINES ===== -->
+      <section class="panel" id="tool-headlines">
+        <div class="panel-head">
+          <h2>✍️ Gerador de Headlines</h2>
+          <p>Preencha os campos e gere 10 títulos persuasivos baseados em frameworks clássicos de copywriting.</p>
+        </div>
+        <div class="card">
+          <div class="form-grid">
+            <label>Produto / oferta <input type="text" id="hProduct" placeholder="Ex.: curso de tráfego pago" /></label>
+            <label>Público-alvo <input type="text" id="hAudience" placeholder="Ex.: afiliados iniciantes" /></label>
+            <label>Principal benefício <input type="text" id="hBenefit" placeholder="Ex.: fazer a primeira venda" /></label>
+            <div class="form-actions"><button class="btn btn-primary btn-sm" id="btnHeadlines">Gerar 10 headlines ⚡</button></div>
+          </div>
+        </div>
+        <div class="output-list" id="headlinesOut"></div>
+      </section>
+
+      <!-- ===== REESCRITOR ===== -->
+      <section class="panel" id="tool-copy">
+        <div class="panel-head">
+          <h2>🔁 Reescritor de Copy</h2>
+          <p>Cole sua copy e receba variações com sinônimos e conectores alternativos, mantendo a estrutura persuasiva.</p>
+        </div>
+        <div class="card">
+          <label class="lbl-block">Sua copy original
+            <textarea id="rwInput" rows="6" placeholder="Cole aqui a copy que você quer variar…"></textarea>
+          </label>
+          <div class="form-actions"><button class="btn btn-primary btn-sm" id="btnRewrite">Gerar 3 variações 🔁</button></div>
+        </div>
+        <div class="output-list" id="rewriteOut"></div>
+      </section>
+
+      <!-- ===== FRAMEWORKS ===== -->
+      <section class="panel" id="tool-frameworks">
+        <div class="panel-head">
+          <h2>🧱 Frameworks de Copy</h2>
+          <p>Preencha 4 campos e receba copies completas nos frameworks AIDA, PAS e BAB.</p>
+        </div>
+        <div class="card">
+          <div class="form-grid">
+            <label>Produto / oferta <input type="text" id="fwProduct" placeholder="Ex.: mentoria de lançamentos" /></label>
+            <label>Dor do público <input type="text" id="fwPain" placeholder="Ex.: gastar em anúncio sem retorno" /></label>
+            <label>Benefício / transformação <input type="text" id="fwGain" placeholder="Ex.: campanhas lucrativas e previsíveis" /></label>
+            <label>Chamada pra ação <input type="text" id="fwCta" placeholder="Ex.: Garanta sua vaga hoje" /></label>
+            <div class="form-actions"><button class="btn btn-primary btn-sm" id="btnFrameworks">Gerar copies 🧱</button></div>
+          </div>
+        </div>
+        <div class="output-list" id="frameworksOut"></div>
+      </section>
+
+      <!-- ===== PALAVRAS SENSÍVEIS ===== -->
+      <section class="panel" id="tool-bloqueadas">
+        <div class="panel-head">
+          <h2>🚦 Verificador de Palavras Sensíveis</h2>
+          <p>Cheque sua copy contra termos que costumam gerar reprovação em plataformas de anúncio — e veja alternativas mais seguras e honestas.</p>
+        </div>
+        <div class="card">
+          <label class="lbl-block">Copy pra verificar
+            <textarea id="bwInput" rows="6" placeholder="Cole sua copy aqui…"></textarea>
+          </label>
+          <div class="form-actions"><button class="btn btn-primary btn-sm" id="btnBlocked">Verificar agora 🚦</button></div>
+        </div>
+        <div id="blockedOut"></div>
+      </section>
+
+      <!-- ===== TEXTO ESTILIZADO ===== -->
+      <section class="panel" id="tool-estilizado">
+        <div class="panel-head">
+          <h2>🔤 Texto Estilizado</h2>
+          <p>Converta texto comum em estilos Unicode pra destacar bios, legendas e posts. Digite e copie.</p>
+        </div>
+        <div class="card">
+          <label class="lbl-block">Seu texto
+            <input type="text" id="styInput" placeholder="Digite algo aqui…" />
+          </label>
+        </div>
+        <div class="output-list" id="styOut"></div>
+      </section>
+
+      <!-- ===== CONTADOR ===== -->
+      <section class="panel" id="tool-contador">
+        <div class="panel-head">
+          <h2>🔢 Contador de Caracteres</h2>
+          <p>Escreva seu texto e veja em tempo real se ele cabe nos limites de cada plataforma de anúncios.</p>
+        </div>
+        <div class="card">
+          <label class="lbl-block">Seu texto <span class="hint" id="charCount">0 caracteres · 0 palavras</span>
+            <textarea id="charInput" rows="4" placeholder="Escreva o título ou a descrição do anúncio…"></textarea>
+          </label>
+        </div>
+        <div class="card">
+          <h3>Limites por plataforma</h3>
+          <div id="charLimits"></div>
+        </div>
+      </section>
+
+      <!-- ===== UTM ===== -->
+      <section class="panel" id="tool-utm">
+        <div class="panel-head">
+          <h2>🔗 Gerador de UTMs</h2>
+          <p>Monte links rastreáveis pra saber exatamente de onde vem cada clique. O histórico fica salvo localmente.</p>
+        </div>
+        <div class="card">
+          <div class="form-grid">
+            <label style="grid-column:1/-1">URL de destino <input type="url" id="utmUrl" placeholder="https://minhapagina.com.br/oferta" /></label>
+            <label>utm_source <input type="text" id="utmSource" placeholder="facebook" /></label>
+            <label>utm_medium <input type="text" id="utmMedium" placeholder="cpc" /></label>
+            <label>utm_campaign <input type="text" id="utmCampaign" placeholder="lancamento-julho" /></label>
+            <label>utm_content <input type="text" id="utmContent" placeholder="criativo-01" /></label>
+          </div>
+          <div class="utm-result" id="utmResult"><span class="hint">Preencha a URL e os parâmetros acima — o link aparece aqui.</span></div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm" id="btnUtmCopy">Copiar link 🔗</button>
+            <button class="btn btn-ghost btn-sm" id="btnUtmSave">Salvar no histórico</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Histórico</h3>
+          <div class="output-list" id="utmHistory"><p class="hint">Nenhum link salvo ainda.</p></div>
+        </div>
+      </section>
+
+      <!-- ===== ESCALA ===== -->
+      <section class="panel" id="tool-escala">
+        <div class="panel-head">
+          <h2>📈 Simulador de Escala</h2>
+          <p>Projete o que acontece com cliques, vendas e ROAS ao multiplicar o orçamento — incluindo a perda de eficiência típica da escala.</p>
+        </div>
+        <div class="card">
+          <div class="form-grid">
+            <label>Orçamento diário (R$) <input type="number" id="scBudget" value="100" min="1" step="1" /></label>
+            <label>CPM médio (R$) <input type="number" id="scCpm" value="15" min="0.1" step="0.1" /></label>
+            <label>CTR (%) <input type="number" id="scCtr" value="1.5" min="0.01" step="0.1" /></label>
+            <label>Taxa de conversão da página (%) <input type="number" id="scConv" value="2" min="0.01" step="0.1" /></label>
+            <label>Ticket médio (R$) <input type="number" id="scTicket" value="97" min="0.01" step="0.01" /></label>
+            <label>Perda de eficiência por nível de escala (%)
+              <input type="range" id="scDecay" min="0" max="30" value="8" />
+              <span class="hint" id="scDecayLbl">8% — a cada nível, o custo por resultado tende a subir</span>
+            </label>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head-row">
+            <h3>Projeção de escala</h3>
+            <div class="viz-legend">
+              <span class="lg-item"><span class="lg-swatch" style="background:var(--series-1)"></span>Investimento/dia</span>
+              <span class="lg-item"><span class="lg-swatch" style="background:var(--series-2)"></span>Receita/dia</span>
+            </div>
+          </div>
+          <div class="viz-root" id="scaleChart"></div>
+          <div class="table-wrap">
+            <table class="data-table" id="scaleTable">
+              <thead><tr><th>Escala</th><th>Investimento/dia</th><th>Cliques</th><th>Vendas</th><th>Receita/dia</th><th>Lucro/dia</th><th>ROAS</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="hint">Simulação matemática a partir dos seus números — o mercado real varia. Use como bússola, não como promessa.</p>
+        </div>
+      </section>
+
+      <!-- ===== RADAR ===== -->
+      <section class="panel" id="tool-radar">
+        <div class="panel-head">
+          <h2>🛰️ Radar de Concorrentes</h2>
+          <p>Pesquise anúncios ativos nas bibliotecas públicas e oficiais de transparência — a forma legítima de estudar o mercado.</p>
+        </div>
+        <div class="card">
+          <div class="form-grid">
+            <label>Palavra-chave ou anunciante <input type="text" id="spyQuery" placeholder="Ex.: emagrecimento, curso de inglês, nome da marca…" /></label>
+            <label>País
+              <select id="spyCountry">
+                <option value="BR" selected>Brasil</option>
+                <option value="US">Estados Unidos</option>
+                <option value="PT">Portugal</option>
+                <option value="MX">México</option>
+                <option value="AR">Argentina</option>
+                <option value="ALL">Todos</option>
+              </select>
+            </label>
+          </div>
+          <div class="radar-grid">
+            <button class="radar-card" data-lib="meta">
+              <strong>Meta Ad Library</strong>
+              <span>Anúncios ativos no Facebook e Instagram</span>
+              <span class="tc-go">Pesquisar →</span>
+            </button>
+            <button class="radar-card" data-lib="google">
+              <strong>Google Ads Transparency</strong>
+              <span>Anúncios veiculados no Google e YouTube</span>
+              <span class="tc-go">Pesquisar →</span>
+            </button>
+            <button class="radar-card" data-lib="tiktok">
+              <strong>TikTok Ad Library</strong>
+              <span>Anúncios em circulação no TikTok</span>
+              <span class="tc-go">Pesquisar →</span>
+            </button>
+          </div>
+          <p class="hint">Os links abrem a busca já montada na biblioteca oficial de cada plataforma, em nova aba.</p>
+        </div>
+      </section>
+
+      <!-- ===== CRIATIVO ===== -->
+      <section class="panel" id="tool-criativo">
+        <div class="panel-head">
+          <h2>🎨 Estúdio de Criativos</h2>
+          <p>Monte banners profissionais com gradiente, headline e CTA — e baixe em PNG pronto pra subir no gerenciador.</p>
+        </div>
+        <div class="creative-layout">
+          <div class="card">
+            <div class="form-grid one-col">
+              <label>Formato
+                <select id="crFormat">
+                  <option value="feed">Feed — 1080 × 1080</option>
+                  <option value="story">Story — 1080 × 1920</option>
+                </select>
+              </label>
+              <label>Estilo de fundo
+                <select id="crTheme">
+                  <option value="0">Pulsar (violeta → ciano)</option>
+                  <option value="1">Fogo (laranja → rosa)</option>
+                  <option value="2">Floresta (verde → esmeralda)</option>
+                  <option value="3">Meia-noite (azul profundo)</option>
+                  <option value="4">Ouro (âmbar → bronze)</option>
+                </select>
+              </label>
+              <label>Selo (opcional) <input type="text" id="crBadge" value="NOVIDADE" maxlength="20" /></label>
+              <label>Headline <input type="text" id="crHeadline" value="Sua oferta em destaque" maxlength="60" /></label>
+              <label>Subtítulo <input type="text" id="crSub" value="Descreva o benefício principal em uma frase curta" maxlength="90" /></label>
+              <label>Texto do botão <input type="text" id="crCta" value="QUERO AGORA" maxlength="24" /></label>
+              <div class="form-actions">
+                <button class="btn btn-primary btn-sm" id="btnCrDownload">Baixar PNG ⬇️</button>
+              </div>
+            </div>
+          </div>
+          <div class="card creative-preview">
+            <canvas id="crCanvas" width="1080" height="1080"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== ÁUDIO ===== -->
+      <section class="panel" id="tool-audio">
+        <div class="panel-head">
+          <h2>🔊 Gerador de Áudio</h2>
+          <p>Transforme sua copy em narração usando as vozes nativas do seu navegador e sistema — sem custo de API.</p>
+        </div>
+        <div class="card">
+          <label class="lbl-block">Texto pra narrar
+            <textarea id="ttsInput" rows="5" placeholder="Cole aqui a copy que você quer ouvir narrada…"></textarea>
+          </label>
+          <div class="form-grid">
+            <label>Voz <select id="ttsVoice"></select></label>
+            <label>Velocidade <input type="range" id="ttsRate" min="0.5" max="2" step="0.1" value="1" /><span class="hint" id="ttsRateLbl">1.0x</span></label>
+            <label>Tom <input type="range" id="ttsPitch" min="0.5" max="1.5" step="0.1" value="1" /><span class="hint" id="ttsPitchLbl">1.0</span></label>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm" id="btnTtsPlay">▶ Reproduzir</button>
+            <button class="btn btn-ghost btn-sm" id="btnTtsStop">⏹ Parar</button>
+          </div>
+          <p class="hint">Dica: no Windows e no Chrome há vozes em português (Maria, Daniel, Google português do Brasil…). Pra gravar o áudio, use o gravador do sistema enquanto reproduz.</p>
+        </div>
+      </section>
+
+      <!-- ===== TRANSCRITOR ===== -->
+      <section class="panel" id="tool-transcritor">
+        <div class="panel-head">
+          <h2>🎙️ Transcritor por Voz</h2>
+          <p>Fale e veja o texto aparecer em tempo real — perfeito pra rascunhar roteiros e copies sem digitar.</p>
+        </div>
+        <div class="card">
+          <div class="form-actions" style="margin-bottom:16px">
+            <button class="btn btn-primary btn-sm" id="btnSttStart">🎙️ Começar a ditar</button>
+            <button class="btn btn-ghost btn-sm" id="btnSttCopy">Copiar texto</button>
+            <button class="btn btn-ghost btn-sm btn-danger" id="btnSttClear">Limpar</button>
+          </div>
+          <div class="stt-output" id="sttOutput" aria-live="polite"><span class="hint">O texto ditado aparece aqui…</span></div>
+          <p class="hint" id="sttSupport">Requer Chrome ou Edge (reconhecimento de fala do navegador). O áudio é processado pelo serviço de fala do próprio navegador.</p>
+        </div>
+      </section>
+
+      <!-- ===== METADADOS ===== -->
+      <section class="panel" id="tool-metadados">
+        <div class="panel-head">
+          <h2>🧹 Limpador de Metadados</h2>
+          <p>Fotos carregam dados EXIF (localização, aparelho, data). Limpe tudo antes de publicar — a imagem nunca sai do seu computador.</p>
+        </div>
+        <div class="card">
+          <label class="dropzone" id="metaDrop">
+            <input type="file" id="metaFile" accept="image/jpeg,image/png,image/webp" hidden />
+            <span id="metaDropText">📷 Clique ou arraste uma imagem aqui (JPG, PNG ou WebP)</span>
+          </label>
+          <div id="metaInfo" class="meta-info" hidden></div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm" id="btnMetaClean" disabled>Limpar metadados e baixar 🧹</button>
+          </div>
+          <p class="hint">Como funciona: a imagem é redesenhada pixel a pixel em um novo arquivo, que nasce sem nenhum metadado EXIF/IPTC/XMP. Processamento 100% local.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="viz-tooltip" id="vizTooltip" hidden></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
