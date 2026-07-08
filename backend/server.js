@@ -20,7 +20,8 @@ const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
 const PORT = process.env.PORT || 3000;
 const MP_TOKEN = process.env.MP_ACCESS_TOKEN || "";
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "*";
-const PUBLIC_URL = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+// no Render, RENDER_EXTERNAL_URL já vem preenchido automaticamente
+const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "").replace(/\/$/, "");
 const FRONT_APP = FRONTEND_ORIGIN === "*"
   ? "https://muhehehe123514-ux.github.io/pulsarads/app.html"
   : FRONTEND_ORIGIN.replace(/\/$/, "") + "/pulsarads/app.html";

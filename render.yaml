@@ -1,0 +1,18 @@
+# Blueprint do Render — provisiona o backend de pagamentos do PulsarAds.
+# No Render: New + → Blueprint → escolha o repo muhehehe123514-ux/pulsarads.
+# Ele lê este arquivo e cria o serviço. Só vai te pedir o MP_ACCESS_TOKEN.
+services:
+  - type: web
+    name: pulsarads-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: MP_ACCESS_TOKEN        # cole seu Access Token de produção do Mercado Pago
+        sync: false                 # (fica só no Render, nunca no código)
+      - key: FRONTEND_ORIGIN
+        value: https://muhehehe123514-ux.github.io
+      # PUBLIC_URL é resolvida sozinha via RENDER_EXTERNAL_URL — não precisa definir
