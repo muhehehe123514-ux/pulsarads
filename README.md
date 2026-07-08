@@ -6,10 +6,11 @@
 
 ## O que tem dentro
 
-Tudo roda **100% no navegador** — site estático, sem backend, sem API paga, sem coleta de dados. Por isso pode ser gratuito para sempre.
+Tudo roda **100% no navegador** — site estático, sem backend. Contas, sessão e dados ficam no localStorage (senhas guardadas como hash PBKDF2, nunca em texto puro). Plano gratuito com 4 ferramentas básicas; **Pro por R$ 40/mês via PIX** desbloqueia as 19, com ativação por código.
 
 | Ferramenta | O que faz |
 |---|---|
+| 📡 Meta Ads ao vivo | Conecta sua conta pela Marketing API oficial da Meta (token próprio): campanhas, gasto, compras, ROAS ao vivo, pausar/ativar e importar pro painel |
 | 🔥 Explorador de Ofertas | Filtros por nicho/país/idioma/mídia + bateria de pesquisas automáticas na biblioteca de anúncios do Facebook, com fila e pesquisas salvas |
 | 💰 Rastreador de Vendas | Atribuição estilo Utmify: vendas por campanha e criativo, ROAS/CPA reais cruzando com o painel, import CSV do checkout |
 | 🧭 Modelador Low Ticket | Oferta, copy, funil (bump + upsell), estrutura de campanha e checklist prontos a partir de 4 campos |

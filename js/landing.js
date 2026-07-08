@@ -54,6 +54,7 @@ document.querySelectorAll("[data-count]").forEach((el) => counterIO.observe(el))
 
 // ---------- Tools grid ----------
 const TOOLS = [
+  { id: "meta",        name: "Meta Ads ao vivo",        desc: "Conecte sua conta pela API oficial da Meta: campanhas, gasto, compras e ROAS ao vivo — com pausar/ativar.", icon: "M12 20h.01M2 8.82a15 15 0 0120 0M5 12.86a10 10 0 0114 0M8.5 16.4a5 5 0 017 0", isNew: true },
   { id: "ofertas",     name: "Explorador de Ofertas",   desc: "Filtros por nicho, país e mídia + bateria de pesquisas automáticas na biblioteca de anúncios do Facebook.", icon: "M13 2L3 14h7l-1 8 10-12h-7l1-8z", isNew: true },
   { id: "vendas",      name: "Rastreador de Vendas",    desc: "Atribuição por campanha e criativo com ROAS e CPA reais — registre vendas ou importe CSV do checkout.", icon: "M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6", isNew: true },
   { id: "lowticket",   name: "Modelador Low Ticket",    desc: "Oferta, copy, funil, campanha e checklist prontos pra lançar um low ticket em minutos.", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2", isNew: true },
