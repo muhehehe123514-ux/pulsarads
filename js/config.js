@@ -6,4 +6,4 @@
    "Pagar com Mercado Pago" ficam escondidos.
    Ex.: window.PULSAR_BACKEND = "https://pulsarads-backend.onrender.com";
    ============================================================ */
-window.PULSAR_BACKEND = "";
+window.PULSAR_BACKEND = "https://pulsarads-backend.onrender.com";
