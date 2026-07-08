@@ -87,6 +87,7 @@ function renderOpQueue() {
         <div class="out-actions">
           <button class="btn-copy" data-op-open="${i}">Abrir ↗</button>
           <button class="btn-copy" data-op-save="${i}">Salvar</button>
+          <button class="btn-copy" data-op-lib="${i}" title="Adicionar à Biblioteca de Ofertas">➕ Biblioteca</button>
         </div>
       </div>`
     )
@@ -120,6 +121,11 @@ $("#btnOpReset").addEventListener("click", () => {
 $("#opSearchList").addEventListener("click", (e) => {
   const open = e.target.closest("[data-op-open]");
   const save = e.target.closest("[data-op-save]");
+  const lib = e.target.closest("[data-op-lib]");
+  if (lib && window.libAddFromSearch) {
+    const s = opQueue[+lib.dataset.opLib];
+    window.libAddFromSearch(s.q, s.url, $("#opCountry").value);
+  }
   if (open) {
     const s = opQueue[+open.dataset.opOpen];
     s.opened = true;

@@ -85,12 +85,15 @@ function currentUser() {
 function isAdmin() {
   return currentUser() === ADMIN_USER;
 }
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
 function isPro() {
   if (isAdmin()) return true;
   const u = currentUser();
   if (!u) return false;
   const rec = loadUsers()[u];
-  return !!(rec?.paidUntil && new Date(rec.paidUntil) >= new Date());
+  // acesso vale até o 30º dia; no dia seguinte (paidUntil) já bloqueia
+  return !!(rec?.paidUntil && todayStr() < rec.paidUntil);
 }
 
 // ---------- Olhinho de senha ----------
@@ -200,11 +203,11 @@ function paywallHtml() {
       <div class="lock-icon">🔒</div>
       <h3>Ferramenta <span class="grad-text">Pro</span></h3>
       <div class="lock-price">R$ ${PRICE},00<small>/mês</small></div>
-      <p>Desbloqueie todas as 19 ferramentas, incluindo Meta Ads ao vivo, Explorador de Ofertas e Rastreador de Vendas.</p>
+      <p>Desbloqueie as 20 ferramentas, incluindo Meta Ads ao vivo, Biblioteca de Ofertas, Explorador e Rastreador de Vendas.</p>
       <ol class="lock-steps">
         <li>Copie o PIX abaixo e pague <strong>R$ ${PRICE},00</strong> (chave CPF: ${PIX_KEY})</li>
         <li>Envie o comprovante + seu usuário (<strong>${escHtml(currentUser() || "")}</strong>) pro dono do site</li>
-        <li>Receba seu código e ative aqui embaixo — libera 31 dias</li>
+        <li>Receba seu código e ative aqui embaixo — libera 30 dias (renova a cada pagamento)</li>
       </ol>
       <div class="pix-row">
         <input type="text" readonly value="${pixPayload()}" onclick="this.select()" />
@@ -267,12 +270,12 @@ document.body.addEventListener("click", async (e) => {
     }
     if (!ok) return toast("Código inválido pra esse usuário/mês 😕");
     const users = loadUsers();
-    if (!users[user]) users[user] = { hash: "", created: new Date().toISOString().slice(0, 10) };
+    if (!users[user]) users[user] = { hash: "", created: todayStr() };
     const until = new Date();
-    until.setDate(until.getDate() + 31);
+    until.setDate(until.getDate() + 30); // 30 dias de uso; no 31º já bloqueia
     users[user].paidUntil = until.toISOString().slice(0, 10);
     saveUsers(users);
-    toast("⚡ PRO ativado por 31 dias! Bom jogo.");
+    toast("⚡ PRO ativado por 30 dias! Bom jogo.");
     renderUserChip();
     applyGating();
   }
@@ -313,7 +316,7 @@ function renderAdminUsers() {
     ? names
         .map((n) => {
           const u = users[n];
-          const pro = u.paidUntil && new Date(u.paidUntil) >= new Date();
+          const pro = u.paidUntil && todayStr() < u.paidUntil;
           return `<tr><td>${escHtml(n)}</td><td>${u.created || "—"}</td>
             <td>${pro ? '<span class="pill pill-on">⚡ Pro</span>' : '<span class="pill pill-off">grátis</span>'}</td>
             <td>${u.paidUntil ? u.paidUntil.split("-").reverse().join("/") : "—"}</td>
@@ -330,12 +333,12 @@ $("#admUsersTable").addEventListener("click", (e) => {
   const users = loadUsers();
   if (give) {
     const u = users[give.dataset.admPro];
-    const base = u.paidUntil && new Date(u.paidUntil) >= new Date() ? new Date(u.paidUntil) : new Date();
-    base.setDate(base.getDate() + 31);
+    const base = u.paidUntil && todayStr() < u.paidUntil ? new Date(u.paidUntil) : new Date();
+    base.setDate(base.getDate() + 30);
     u.paidUntil = base.toISOString().slice(0, 10);
     saveUsers(users);
     renderAdminUsers();
-    toast("Pro estendido em 31 dias ⚡");
+    toast("Pro estendido em 30 dias ⚡");
   }
   if (del) {
     if (!confirm(`Excluir a conta "${del.dataset.admDel}" deste navegador?`)) return;
@@ -349,6 +352,15 @@ $("#admUsersTable").addEventListener("click", (e) => {
 window.addEventListener("hashchange", () => {
   if (location.hash === "#admin" && !isAdmin()) location.hash = "painel";
 });
+
+// expiração automática: re-checa o plano a cada troca de tela e a cada minuto,
+// então no dia seguinte ao 30º o acesso cai sozinho, mesmo com a aba aberta
+window.addEventListener("hashchange", () => {
+  if (getSession()) { applyGating(); renderUserChip(); }
+});
+setInterval(() => {
+  if (getSession()) { applyGating(); renderUserChip(); }
+}, 60000);
 
 // ---------- Boot ----------
 if (getSession()) {

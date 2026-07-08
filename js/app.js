@@ -624,12 +624,25 @@ $$(".radar-card").forEach((btn) => {
 // 11) ESTÚDIO DE CRIATIVOS (Canvas)
 // ============================================================
 const CR_THEMES = [
-  { g: ["#7c3aed", "#0ea5e9"], accent: "#ffffff", ctaBg: "#ffffff", ctaText: "#7c3aed" },
-  { g: ["#f97316", "#ec4899"], accent: "#ffffff", ctaBg: "#ffffff", ctaText: "#ea580c" },
-  { g: ["#059669", "#10b981"], accent: "#ffffff", ctaBg: "#ffffff", ctaText: "#047857" },
-  { g: ["#1e3a8a", "#0f172a"], accent: "#93c5fd", ctaBg: "#3b82f6", ctaText: "#ffffff" },
-  { g: ["#b45309", "#78350f"], accent: "#fde68a", ctaBg: "#fbbf24", ctaText: "#78350f" },
+  { name: "Pulsar (violeta → ciano)", g: ["#7c3aed", "#0ea5e9"], accent: "#ffffff", ctaBg: "#ffffff", ctaText: "#7c3aed" },
+  { name: "Fogo (laranja → rosa)", g: ["#f97316", "#ec4899"], accent: "#ffffff", ctaBg: "#ffffff", ctaText: "#ea580c" },
+  { name: "Floresta (verdes)", g: ["#059669", "#065f46"], accent: "#a7f3d0", ctaBg: "#ffffff", ctaText: "#047857" },
+  { name: "Meia-noite (azul profundo)", g: ["#1e3a8a", "#0f172a"], accent: "#93c5fd", ctaBg: "#3b82f6", ctaText: "#ffffff" },
+  { name: "Ouro (âmbar → bronze)", g: ["#b45309", "#78350f"], accent: "#fde68a", ctaBg: "#fbbf24", ctaText: "#78350f" },
+  { name: "Rubi (vermelho intenso)", g: ["#dc2626", "#7f1d1d"], accent: "#fecaca", ctaBg: "#ffffff", ctaText: "#b91c1c" },
+  { name: "Oceano (azul-petróleo)", g: ["#0891b2", "#164e63"], accent: "#a5f3fc", ctaBg: "#22d3ee", ctaText: "#083344" },
+  { name: "Pôr do sol (roxo → laranja)", g: ["#9333ea", "#f97316"], accent: "#ffffff", ctaBg: "#ffffff", ctaText: "#9333ea" },
+  { name: "Lima (verde neon)", g: ["#65a30d", "#0d9488"], accent: "#ecfccb", ctaBg: "#ecfccb", ctaText: "#3f6212" },
+  { name: "Chiclete (rosa → roxo)", g: ["#ec4899", "#8b5cf6"], accent: "#ffffff", ctaBg: "#ffffff", ctaText: "#db2777" },
+  { name: "Aço (cinza-azulado)", g: ["#475569", "#1e293b"], accent: "#cbd5e1", ctaBg: "#e2e8f0", ctaText: "#0f172a" },
+  { name: "Noir (preto + amarelo)", g: ["#18181b", "#000000"], accent: "#facc15", ctaBg: "#facc15", ctaText: "#18181b" },
 ];
+const CR_LAYOUTS = ["Clássico (à esquerda)", "Centralizado", "Base impactante", "Painel diagonal", "Moldura minimalista", "Explosão de raios"];
+const CR_PATTERNS = ["Sem padrão", "Bolinhas", "Grade fina", "Ondas"];
+
+$("#crTheme").innerHTML = CR_THEMES.map((t, i) => `<option value="${i}">${t.name}</option>`).join("");
+$("#crLayout").innerHTML = CR_LAYOUTS.map((l, i) => `<option value="${i}">${l}</option>`).join("");
+$("#crPattern").innerHTML = CR_PATTERNS.map((p, i) => `<option value="${i}">${p}</option>`).join("");
 
 function wrapText(ctx, text, maxWidth) {
   const words = text.split(" ");
@@ -646,95 +659,247 @@ function wrapText(ctx, text, maxWidth) {
   return lines;
 }
 
-function renderCreative() {
+const crEase = (x) => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 3);
+
+function drawPattern(ctx, W, H, pattern, loop) {
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "#ffffff";
+  const drift = (loop * 20) % 72;
+  if (pattern === 1) {
+    for (let y = -72; y < H + 72; y += 72)
+      for (let x = -72 + drift; x < W + 72; x += 72) {
+        ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill();
+      }
+  } else if (pattern === 2) {
+    ctx.lineWidth = 2;
+    for (let x = drift; x < W; x += 84) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = drift; y < H; y += 84) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  } else if (pattern === 3) {
+    ctx.lineWidth = 4;
+    for (let y = 80; y < H; y += 130) {
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 12)
+        ctx.lineTo(x, y + Math.sin(x / 90 + y + loop * 2) * 22);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// t = progresso da intro (0→1) · loop = segundos correndo (animações contínuas)
+function drawCreative(t = 1, loop = 0) {
   const canvas = $("#crCanvas");
   const story = $("#crFormat").value === "story";
-  canvas.width = 1080;
-  canvas.height = story ? 1920 : 1080;
-  const W = canvas.width, H = canvas.height;
+  const W = 1080, H = story ? 1920 : 1080;
+  if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
   const ctx = canvas.getContext("2d");
   const theme = CR_THEMES[+$("#crTheme").value];
+  const layout = +$("#crLayout").value;
+  const pattern = +$("#crPattern").value;
+  const anim = $("#crVidAnim").value;
+  const stage = (a, b) => crEase((t - a) / (b - a));
 
-  // fundo
-  const grad = ctx.createLinearGradient(0, 0, W, H);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.textAlign = "left";
+
+  // zoom cinematográfico: cena inteira escala 1.12 → 1
+  if (anim === "zoom" && (t < 1 || loop > 0)) {
+    const z = 1.12 - 0.12 * crEase(t) + Math.sin(loop * 0.8) * 0.004;
+    ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
+  }
+
+  // fundo em gradiente (vivo no modo pulse)
+  const shift = anim === "pulse" ? Math.sin(loop * 1.2) * 0.3 : 0;
+  const grad = ctx.createLinearGradient(W * shift, 0, W * (1 + shift), H);
   grad.addColorStop(0, theme.g[0]);
   grad.addColorStop(1, theme.g[1]);
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(-W * 0.1, -H * 0.1, W * 1.2, H * 1.2);
 
-  // círculos decorativos
-  ctx.globalAlpha = 0.12;
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath(); ctx.arc(W * 0.9, H * 0.12, W * 0.28, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.arc(W * 0.08, H * 0.92, W * 0.34, 0, 7); ctx.fill();
-  ctx.globalAlpha = 0.08;
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "#ffffff";
-  for (let i = 0; i < 5; i++) {
-    ctx.beginPath(); ctx.arc(W * 0.9, H * 0.12, W * (0.32 + i * 0.05), 0, 7); ctx.stroke();
+  drawPattern(ctx, W, H, pattern, loop);
+
+  // decoração por layout
+  if (layout === 0 || layout === 1) {
+    ctx.globalAlpha = 0.12; ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(W * 0.9, H * 0.12 + Math.sin(loop) * 12, W * 0.28, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(W * 0.08, H * 0.92, W * 0.34, 0, 7); ctx.fill();
+    ctx.globalAlpha = 0.08; ctx.lineWidth = 3; ctx.strokeStyle = "#ffffff";
+    for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(W * 0.9, H * 0.12, W * (0.32 + i * 0.05), 0, 7); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  } else if (layout === 2) {
+    const g2 = ctx.createLinearGradient(0, H * 0.35, 0, H);
+    g2.addColorStop(0, "rgba(0,0,0,0)");
+    g2.addColorStop(1, "rgba(0,0,0,0.45)");
+    ctx.fillStyle = g2;
+    ctx.fillRect(-W * 0.1, 0, W * 1.2, H * 1.1);
+    ctx.globalAlpha = 0.1; ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(W * 0.85, H * 0.18 + Math.sin(loop) * 14, W * 0.3, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
+  } else if (layout === 3) {
+    ctx.fillStyle = "rgba(0,0,0,0.32)";
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(W * 0.66, 0); ctx.lineTo(W * 0.52, H); ctx.lineTo(0, H);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 0.14; ctx.lineWidth = 3; ctx.strokeStyle = "#ffffff";
+    for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(W * 0.85, H * 0.5, W * (0.1 + i * 0.06) + Math.sin(loop * 1.5) * 6, 0, 7); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  } else if (layout === 4) {
+    ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 5;
+    ctx.strokeRect(44, 44, W - 88, H - 88);
+    ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 2;
+    ctx.strokeRect(66, 66, W - 132, H - 132);
+  } else if (layout === 5) {
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(loop * 0.15);
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+    for (let i = 0; i < 12; i++) {
+      ctx.rotate(Math.PI / 6);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-W * 0.12, -H * 1.2); ctx.lineTo(W * 0.12, -H * 1.2);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
   }
-  ctx.globalAlpha = 1;
 
-  const cx = W * 0.09;
-  let cy = story ? H * 0.32 : H * 0.26;
+  // conteúdo
+  const centered = layout === 1 || layout === 4 || layout === 5;
+  const cx = centered ? W / 2 : W * 0.09;
+  ctx.textAlign = centered ? "center" : "left";
+  const maxW = layout === 3 ? W * 0.52 : W * 0.82;
+  let cy = layout === 2 ? H * (story ? 0.52 : 0.4) : story ? H * 0.3 : H * (centered ? 0.22 : 0.24);
+
+  const slideY = anim === "slide" ? 60 : 0;
 
   // selo
   const badge = $("#crBadge").value.trim();
   if (badge) {
+    const a1 = stage(0, 0.3);
+    ctx.globalAlpha = a1;
+    const by = cy + (1 - a1) * slideY;
     ctx.font = "700 34px 'Inter', sans-serif";
     const bw = ctx.measureText(badge.toUpperCase()).width + 56;
+    const bx = centered ? cx - bw / 2 : cx;
     ctx.fillStyle = "rgba(255,255,255,0.18)";
     ctx.strokeStyle = "rgba(255,255,255,0.5)";
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(cx, cy - 46, bw, 68, 34);
-    ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(bx, by - 46, bw, 68, 34); ctx.fill(); ctx.stroke();
     ctx.fillStyle = theme.accent;
-    ctx.fillText(badge.toUpperCase(), cx + 28, cy);
+    ctx.textAlign = "left";
+    ctx.fillText(badge.toUpperCase(), bx + 28, by);
+    ctx.textAlign = centered ? "center" : "left";
+    ctx.globalAlpha = 1;
     cy += 110;
   }
 
   // headline
   const headline = $("#crHeadline").value.trim() || "Sua oferta em destaque";
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 92px 'Space Grotesk', 'Inter', sans-serif";
-  const hLines = wrapText(ctx, headline, W * 0.82);
-  hLines.forEach((l) => { ctx.fillText(l, cx, cy + 66); cy += 106; });
+  const hSize = layout === 4 ? 84 : 92;
+  ctx.font = `700 ${hSize}px 'Space Grotesk', 'Inter', sans-serif`;
+  const hLines = wrapText(ctx, headline, maxW);
+  hLines.forEach((l, i) => {
+    const a = stage(0.15 + i * 0.12, 0.5 + i * 0.12);
+    ctx.globalAlpha = a;
+    ctx.fillText(l, cx, cy + 66 + (1 - a) * slideY);
+    ctx.globalAlpha = 1;
+    cy += hSize + 14;
+  });
   cy += 26;
 
   // subtítulo
   const sub = $("#crSub").value.trim();
   if (sub) {
+    const a = stage(0.5, 0.8);
+    ctx.globalAlpha = a;
     ctx.font = "400 44px 'Inter', sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.85)";
-    wrapText(ctx, sub, W * 0.78).forEach((l) => { ctx.fillText(l, cx, cy + 32); cy += 62; });
+    wrapText(ctx, sub, Math.min(maxW, W * 0.78)).forEach((l) => {
+      ctx.fillText(l, cx, cy + 32 + (1 - a) * slideY);
+      cy += 62;
+    });
+    ctx.globalAlpha = 1;
     cy += 50;
   } else cy += 30;
 
-  // CTA
+  // CTA (com pulso contínuo em vídeo)
   const cta = ($("#crCta").value.trim() || "QUERO AGORA").toUpperCase();
+  const aCta = stage(0.68, 0.95);
+  const pulse = loop > 0 ? 1 + 0.03 * Math.sin(loop * 4) : 1;
   ctx.font = "700 44px 'Inter', sans-serif";
   const cw = ctx.measureText(cta).width + 120;
-  ctx.fillStyle = theme.ctaBg;
-  ctx.shadowColor = "rgba(0,0,0,0.3)";
-  ctx.shadowBlur = 40;
-  ctx.shadowOffsetY = 12;
-  ctx.beginPath();
-  ctx.roundRect(cx, cy, cw, 108, 54);
-  ctx.fill();
-  ctx.shadowColor = "transparent";
-  ctx.fillStyle = theme.ctaText;
-  ctx.fillText(cta, cx + 60, cy + 70);
+  const ctaX = centered ? cx - cw / 2 : cx;
+  ctx.save();
+  ctx.globalAlpha = aCta;
+  ctx.translate(ctaX + cw / 2, cy + 54);
+  ctx.scale(aCta * pulse, aCta * pulse);
+  ctx.translate(-(ctaX + cw / 2), -(cy + 54));
+  if (layout === 4) {
+    ctx.strokeStyle = theme.ctaBg; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.roundRect(ctaX, cy, cw, 108, 54); ctx.stroke();
+    ctx.fillStyle = theme.accent;
+  } else {
+    ctx.fillStyle = theme.ctaBg;
+    ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
+    ctx.beginPath(); ctx.roundRect(ctaX, cy, cw, 108, 54); ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.fillStyle = theme.ctaText;
+  }
+  ctx.textAlign = "left";
+  ctx.fillText(cta, ctaX + 60, cy + 70);
+  ctx.restore();
+  ctx.textAlign = centered ? "center" : "left";
+
+  // selo de preço
+  const price = parseFloat($("#crPrice").value);
+  if (price > 0) {
+    const aP = stage(0.8, 1);
+    const px = layout === 3 ? W * 0.83 : W * 0.82;
+    const py = story ? H * 0.16 : H * 0.15;
+    ctx.save();
+    ctx.globalAlpha = aP;
+    ctx.translate(px, py);
+    ctx.rotate(-0.16 + (loop > 0 ? Math.sin(loop * 2.4) * 0.05 : 0));
+    ctx.scale(aP, aP);
+    ctx.fillStyle = theme.ctaBg;
+    ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
+    ctx.beginPath(); ctx.arc(0, 0, 118, 0, 7); ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.fillStyle = theme.ctaText;
+    ctx.textAlign = "center";
+    ctx.font = "700 30px 'Inter', sans-serif";
+    ctx.fillText("SÓ", 0, -38);
+    ctx.font = "700 54px 'Space Grotesk', sans-serif";
+    ctx.fillText(`R$ ${price.toFixed(2).replace(".", ",")}`.replace(",00", ""), 0, 18);
+    ctx.font = "600 26px 'Inter', sans-serif";
+    ctx.fillText("hoje", 0, 58);
+    ctx.restore();
+    ctx.textAlign = centered ? "center" : "left";
+  }
 
   // rodapé sutil
+  ctx.globalAlpha = 0.5;
   ctx.font = "500 28px 'Inter', sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.5)";
-  ctx.fillText("feito com PulsarAds ⚡ grátis", cx, H - 60);
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "left";
+  ctx.fillText("feito com PulsarAds ⚡", W * 0.09, H - 60);
+  ctx.globalAlpha = 1;
 }
 
-["crFormat", "crTheme", "crBadge", "crHeadline", "crSub", "crCta"].forEach((id) =>
+const renderCreative = () => drawCreative(1, 0);
+
+["crFormat", "crTheme", "crLayout", "crPattern", "crBadge", "crHeadline", "crSub", "crCta", "crPrice", "crVidAnim"].forEach((id) =>
   $("#" + id).addEventListener("input", renderCreative)
 );
+
+$("#btnCrRandom").addEventListener("click", () => {
+  $("#crTheme").value = Math.floor(Math.random() * CR_THEMES.length);
+  $("#crLayout").value = Math.floor(Math.random() * CR_LAYOUTS.length);
+  $("#crPattern").value = Math.floor(Math.random() * CR_PATTERNS.length);
+  renderCreative();
+  toast("Novo modelo sorteado 🎲");
+});
 
 $("#btnCrDownload").addEventListener("click", () => {
   renderCreative();
@@ -743,6 +908,49 @@ $("#btnCrDownload").addEventListener("click", () => {
   a.download = `pulsarads-criativo-${$("#crFormat").value}.png`;
   a.click();
   toast("Criativo baixado 🎨");
+});
+
+// ---------- Vídeo animado (canvas → WebM, 100% no navegador) ----------
+let crRecording = false;
+$("#btnCrVideo").addEventListener("click", async () => {
+  if (crRecording) return;
+  const btn = $("#btnCrVideo");
+  if (!("MediaRecorder" in window)) return toast("Seu navegador não suporta gravação de vídeo 😕");
+  crRecording = true;
+  btn.disabled = true;
+  const dur = +$("#crVidDur").value;
+  const stream = $("#crCanvas").captureStream(30);
+  const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8000000 });
+  const chunks = [];
+  rec.ondataavailable = (e) => chunks.push(e.data);
+  const stopped = new Promise((res) => (rec.onstop = res));
+  rec.start(200);
+  const t0 = performance.now();
+  const introDur = 1.6;
+  await new Promise((res) => {
+    const frame = (now) => {
+      const el = (now - t0) / 1000;
+      if (el >= dur) return res();
+      btn.textContent = `🎬 Gravando… ${Math.min(99, Math.round((el / dur) * 100))}%`;
+      drawCreative(Math.min(el / introDur, 1), el);
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+  rec.stop();
+  await stopped;
+  const blob = new Blob(chunks, { type: "video/webm" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `pulsarads-video-${$("#crFormat").value}-${dur}s.webm`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  btn.textContent = "🎬 Gerar vídeo (WebM)";
+  btn.disabled = false;
+  crRecording = false;
+  renderCreative();
+  toast("Vídeo gerado e baixado 🎬");
 });
 
 // fontes carregam depois do primeiro paint — redesenha quando prontas
