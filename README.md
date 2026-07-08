@@ -6,13 +6,15 @@
 
 ## O que tem dentro
 
-Tudo roda **100% no navegador** — site estático, sem backend. Contas, sessão e dados ficam no localStorage (senhas guardadas como hash PBKDF2, nunca em texto puro). Plano gratuito com 4 ferramentas básicas; **Pro por R$ 40/mês via PIX** desbloqueia as 19, com ativação por código.
+Tudo roda **100% no navegador** — site estático, sem backend. Contas, sessão e dados ficam no localStorage (senhas guardadas como hash PBKDF2, nunca em texto puro). Plano gratuito com 4 ferramentas básicas; **Pro por R$ 40/mês via PIX** desbloqueia as 21, com ativação por código.
 
 | Ferramenta | O que faz |
 |---|---|
 | 📡 Meta Ads ao vivo | Marketing API oficial (token próprio): campanhas, gasto, compras, ROAS ao vivo, funil de conversão por campanha e pausar/ativar |
 | 🔥 Explorador de Ofertas | Filtros por nicho/país/idioma/mídia + bateria de pesquisas automáticas na biblioteca de anúncios do Facebook, com fila e pesquisas salvas |
 | 💰 Rastreador de Vendas | Vendas, lucro, ticket e ROAS puxados automaticamente da conta conectada do Facebook Ads, por campanha |
+| ✨ Modelar Oferta | Novos ângulos pra novos públicos → promessa → headline → página de vendas de 10 seções, editável, com arrastar-imagem e publicação no Netlify |
+| 🖼️ Imagem → Texto | OCR pt-BR no navegador (Tesseract.js) com seleção de trechos |
 | 🧭 Modelador Low Ticket | Oferta, copy, funil (bump + upsell), estrutura de campanha e checklist prontos a partir de 4 campos |
 | 🎯 UTMs Dinâmicas | Macros de rastreamento do Meta ({{campaign.name}}…), Google (ValueTrack) e TikTok, no padrão Utmify |
 | ✍️ Gerador de Headlines | 10 títulos persuasivos por clique, baseados em frameworks de copywriting |

@@ -9,26 +9,30 @@
 // ============================================================
 // 15) EXPLORADOR DE OFERTAS (Ad Library com filtros + fila)
 // ============================================================
+/* Palavras-chave 2.0 — frases que o VENDEDOR escreve na copy do anúncio.
+   Pesquisar como o anunciante escreve (e não como o cliente pesquisa)
+   é o que faz cair direto em oferta de low ticket rodando. */
 const NICHES = [
-  { name: "Culinária & receitas", kws: ["bolo no pote", "receitas fit", "marmita congelada", "brigadeiro gourmet", "pão artesanal"] },
-  { name: "Confeitaria & doces", kws: ["curso de confeitaria", "doces para vender", "ovo de páscoa gourmet", "donuts recheado", "torta no pote"] },
-  { name: "Artesanato & manualidades", kws: ["crochê passo a passo", "laços e tiaras", "velas aromáticas", "biscuit iniciantes", "amigurumi receita"] },
-  { name: "Pets", kws: ["adestramento de cães", "receitas naturais para cachorro", "petisco natural pet", "comportamento canino", "banho e tosa em casa"] },
-  { name: "Fitness em casa", kws: ["treino em casa", "desafio 30 dias", "treino para glúteos", "mobilidade para iniciantes", "alongamento diário"] },
-  { name: "Bem-estar & rotina", kws: ["rotina matinal", "receitas saudáveis semana", "sono de qualidade", "cardápio semanal saudável", "hábitos saudáveis"] },
-  { name: "Beleza & autocuidado", kws: ["skincare passo a passo", "design de sobrancelha", "unhas em gel curso", "cronograma capilar", "maquiagem para iniciantes"] },
-  { name: "Moda & costura", kws: ["corte e costura iniciante", "moldes de roupa", "customização de roupas", "moda evangélica", "brechó online"] },
-  { name: "Maternidade & infantil", kws: ["atividades montessori", "introdução alimentar", "papinhas caseiras", "alfabetização em casa", "rotina do bebê"] },
-  { name: "Educação & concursos", kws: ["mapas mentais concursos", "redação nota 1000", "matemática básica", "memorização acelerada", "planner de estudos"] },
-  { name: "Idiomas", kws: ["inglês do zero", "espanhol para viagem", "frases em inglês", "listening diário", "vocabulário inglês pdf"] },
-  { name: "Música", kws: ["violão para iniciantes", "teclado gospel", "canto afinado", "ukulele passo a passo", "teoria musical simplificada"] },
-  { name: "Finanças pessoais", kws: ["planilha de gastos", "organização financeira", "sair das dívidas", "orçamento familiar", "planilha investimentos"] },
-  { name: "Marketing & negócios online", kws: ["tráfego pago iniciantes", "loja virtual do zero", "vender no instagram", "criar ebook", "canva para negócios"] },
-  { name: "Desenvolvimento pessoal", kws: ["devocional diário", "diário de gratidão", "autoconhecimento exercícios", "planner de hábitos", "meditação guiada"] },
-  { name: "Casa & jardinagem", kws: ["horta em vasos", "organização da casa", "suculentas cuidados", "faxina inteligente", "decoração gastando pouco"] },
+  { name: "Culinária & receitas", kws: ["apostila de receitas", "receitas testadas e aprovadas", "50 receitas", "caderno de receitas digital", "receitas que vendem"] },
+  { name: "Confeitaria & doces", kws: ["apostila de confeitaria", "precificação de doces", "doces para vender", "bolos que vendem todos os dias", "curso de confeitaria por apenas"] },
+  { name: "Artesanato & manualidades", kws: ["moldes prontos para imprimir", "apostila de crochê", "receitas de amigurumi", "gráficos de crochê", "moldes em tamanho real"] },
+  { name: "Pets", kws: ["guia de adestramento", "adestre seu cão em casa", "receitas naturais para cães", "manual do adestramento", "comandos de obediência pdf"] },
+  { name: "Fitness em casa", kws: ["planilha de treino", "treinos prontos", "protocolo de treino", "desafio 30 dias por apenas", "treino em casa pdf"] },
+  { name: "Bem-estar & rotina", kws: ["cardápio semanal pronto", "protocolo do sono", "guia prático de jejum", "método passo a passo", "plano alimentar pdf"] },
+  { name: "Beleza & autocuidado", kws: ["apostila de unhas", "curso de sobrancelha por apenas", "cronograma capilar pdf", "curso de cílios", "técnicas profissionais apostila"] },
+  { name: "Moda & costura", kws: ["moldes de costura prontos", "moldes para imprimir", "apostila de corte e costura", "moldes tamanho real pdf", "costure e venda"] },
+  { name: "Maternidade & infantil", kws: ["atividades para imprimir", "kit de atividades", "apostila de alfabetização", "atividades montessori pdf", "kit escolar para imprimir"] },
+  { name: "Educação & concursos", kws: ["mapas mentais prontos", "resumos prontos pdf", "apostila para concurso", "simulados com gabarito", "planner de estudos por apenas"] },
+  { name: "Idiomas", kws: ["apostila de inglês", "inglês do zero pdf", "guia de conversação", "método de inglês por apenas", "inglês em 90 dias"] },
+  { name: "Música", kws: ["apostila de violão", "método de teclado", "curso de violão por apenas", "cifras simplificadas pdf", "toque em 30 dias"] },
+  { name: "Finanças pessoais", kws: ["planilha de controle financeiro", "kit de planilhas prontas", "planilha pronta por apenas", "método para sair das dívidas", "planilha de orçamento familiar"] },
+  { name: "Marketing & negócios online", kws: ["pack de artes editáveis", "templates prontos canva", "kit instagram profissional", "artes prontas para postar", "curso de tráfego por apenas"] },
+  { name: "Espiritualidade & fé", kws: ["plano de leitura da bíblia", "estudo bíblico pdf", "devocional por apenas", "kit cristão para imprimir", "leia a bíblia em 1 ano"] },
+  { name: "Casa & jardinagem", kws: ["guia de suculentas", "checklist de limpeza para imprimir", "planner de organização", "guia prático de horta", "kit organização pdf"] },
 ];
 
-const QUALIFIERS_AUTO = ["ebook", "curso online", "planilha"];
+// gatilhos que só aparecem em copy de quem está VENDENDO agora
+const QUALIFIERS_AUTO = ["por apenas", "R$ 19,90", "R$ 27", "acesso imediato"];
 const SAVED_KEY = "pulsar_saved_searches";
 let opQueue = [];
 
@@ -64,12 +68,12 @@ $("#btnOpGenerate").addEventListener("click", () => {
   }
   const qual = $("#opQualifier").value;
   const searches = [...kws];
-  if (qual) {
-    kws.slice(0, 4).forEach((k) => searches.push(`${k} ${qual}`));
-  } else {
-    kws.slice(0, 3).forEach((k, i) => searches.push(`${k} ${QUALIFIERS_AUTO[i % QUALIFIERS_AUTO.length]}`));
-  }
-  opQueue = searches.slice(0, 10).map((q) => ({ q, url: adLibUrl(q), opened: false }));
+  // combina a frase de vendedor com gatilho de preço/entrega (filtro sempre ativo)
+  kws.slice(0, 4).forEach((k, i) => {
+    const extra = qual || QUALIFIERS_AUTO[i % QUALIFIERS_AUTO.length];
+    if (!k.toLowerCase().includes(extra.toLowerCase())) searches.push(`${k} ${extra}`);
+  });
+  opQueue = searches.slice(0, 12).map((q) => ({ q, url: adLibUrl(q), opened: false }));
   $("#opScanCard").hidden = false;
   renderOpQueue();
   toast(`${opQueue.length} pesquisas prontas 🔥`);
@@ -79,18 +83,36 @@ $("#btnOpGenerate").addEventListener("click", () => {
 function renderOpQueue() {
   const done = opQueue.filter((s) => s.opened).length;
   $("#opScanProgress").textContent = opQueue.length ? `${done}/${opQueue.length} abertas` : "";
-  $("#opSearchList").innerHTML = opQueue
-    .map(
-      (s, i) => `<div class="out-item${s.opened ? " done" : ""}" style="animation-delay:${i * 0.04}s">
-        <div><span class="out-tag">Pesquisa ${i + 1}${s.opened ? " · ✅ aberta" : ""}</span>
-        <div class="out-text">${escHtml(s.q)}</div></div>
-        <div class="out-actions">
-          <button class="btn-copy" data-op-open="${i}">Abrir ↗</button>
-          <button class="btn-copy" data-op-save="${i}">Salvar</button>
-          <button class="btn-copy" data-op-lib="${i}" title="Adicionar à Biblioteca de Ofertas">➕ Biblioteca</button>
+  const list = $("#opSearchList");
+  list.className = "op-grid";
+  const nicheVal = opNicheSel.value;
+  const nicheName = nicheVal === "custom" ? "Personalizado" : NICHES[+nicheVal].name;
+  const emoji = typeof NICHE_EMOJI !== "undefined" && nicheVal !== "custom" ? NICHE_EMOJI[+nicheVal] || "🔥" : "🔥";
+  const offers = typeof loadOffers === "function" ? loadOffers() : [];
+  const country = $("#opCountry").value;
+
+  list.innerHTML = opQueue
+    .map((s, i) => {
+      // se essa pesquisa já virou oferta salva, mostra os dados reais dela
+      const saved = offers.find((o) => o.name.trim().toLowerCase() === s.q.trim().toLowerCase());
+      const img = saved?.img && typeof imgById === "function" ? imgById(saved.img) : null;
+      const stats = saved
+        ? `<div class="op-mini-stats"><span>👥 ${saved.ads ?? "?"} anúncios</span><span>💵 ${saved.price ? "R$ " + saved.price : "—"}</span><span>📚 salva</span></div>`
+        : `<div class="op-mini-stats"><span>🔎 ativos agora</span><span>${country}</span><span>filtro de venda ON</span></div>`;
+      return `<article class="op-card${s.opened ? " done" : ""}">
+        <div class="op-thumb">${img ? `<img src="${img.dataUrl}" alt="" />` : emoji}<span class="op-num">${s.opened ? "✅ vista" : "PESQUISA " + (i + 1)}</span></div>
+        <div class="op-body">
+          <strong>${escHtml(s.q)}</strong>
+          <div class="oc-chips"><span class="chip">${escHtml(nicheName)}</span>${saved ? `<span class="chip chip-hot">📚 na Biblioteca</span>` : ""}</div>
+          ${stats}
+          <div class="op-actions">
+            <button class="btn btn-primary btn-sm" data-op-open="${i}">👁 Ver anúncios</button>
+            <button class="btn btn-ghost btn-sm" data-op-save="${i}" title="Salvar pesquisa">💾</button>
+            <button class="btn btn-ghost btn-sm" data-op-lib="${i}" title="Adicionar à Biblioteca com preview">➕</button>
+          </div>
         </div>
-      </div>`
-    )
+      </article>`;
+    })
     .join("");
 }
 

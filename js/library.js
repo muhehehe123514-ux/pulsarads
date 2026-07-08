@@ -67,9 +67,10 @@ function renderLibrary() {
       const emoji = o.niche >= 0 && NICHE_EMOJI[o.niche] ? NICHE_EMOJI[o.niche] : "🔥";
       const nicheName = o.niche >= 0 && NICHES[o.niche] ? NICHES[o.niche].name : "Outro";
       const isVsl = /vsl/i.test(o.funnel || "");
+      const thumb = o.img && typeof imgById === "function" ? imgById(o.img) : null;
       return `<article class="offer-card">
         <div class="oc-head">
-          <div class="oc-avatar">${emoji}</div>
+          <div class="oc-avatar">${thumb ? `<img src="${thumb.dataUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:11px" />` : emoji}</div>
           <div class="oc-title">
             <strong>${escHtml(o.name)}</strong>
             <span>${escHtml(o.advertiser || "anunciante não anotado")}</span>
@@ -118,6 +119,8 @@ function libOpenForm(idx = null) {
     $("#lfStatus").value = o.status || "observando";
     $("#lfFormat").value = o.format || "X1 Low Ticket";
     $("#lfLang").value = o.lang || "Português";
+    if (window.renderGalleryAll) renderGalleryAll();
+    $("#lfImg").value = o.img || "";
     $("#lfDesc").value = o.desc || "";
     $("#lfFbPage").value = o.fbPage || "";
     $("#lfSite").value = o.site || "";
@@ -150,6 +153,7 @@ $("#libForm").addEventListener("submit", (e) => {
     status: $("#lfStatus").value,
     format: $("#lfFormat").value,
     lang: $("#lfLang").value,
+    img: $("#lfImg").value,
     desc: $("#lfDesc").value.trim(),
     fbPage: $("#lfFbPage").value.trim(),
     site: $("#lfSite").value.trim(),
@@ -182,49 +186,87 @@ function linkTile(icon, title, desc, url) {
 }
 
 function openOfferModal(idx) {
-  const o = loadOffers()[idx];
+  const offers = loadOffers();
+  const o = offers[idx];
   if (!o) return;
   const st = LIB_STATUS[o.status] || LIB_STATUS.observando;
   const emoji = o.niche >= 0 && NICHE_EMOJI[o.niche] ? NICHE_EMOJI[o.niche] : "🔥";
   const nicheName = o.niche >= 0 && NICHES[o.niche] ? NICHES[o.niche].name : "Outro";
   const isVsl = /vsl/i.test(o.funnel || "");
+  const thumb = o.img && typeof imgById === "function" ? imgById(o.img) : null;
+
+  // sugestões do mesmo nicho (excluindo a própria)
+  const sameNiche = offers
+    .map((x, i) => ({ ...x, i }))
+    .filter((x) => x.i !== idx && x.niche === o.niche)
+    .sort((a, b) => (b.ads || 0) - (a.ads || 0))
+    .slice(0, 6);
+
   $("#offerModalBody").innerHTML = `
     <div class="om-head">
-      <div class="oc-avatar big">${emoji}</div>
+      <div class="oc-avatar big">${thumb ? `<img src="${thumb.dataUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:13px" />` : emoji}</div>
       <div>
         <h3>${escHtml(o.name)}</h3>
-        <p class="hint">${escHtml(o.advertiser || "anunciante não anotado")} · vista em ${o.firstSeen ? o.firstSeen.split("-").reverse().join("/") : "—"}</p>
+        <div class="oc-chips" style="margin-top:6px">
+          <span class="chip">${escHtml(nicheName)}</span>
+          <span class="chip">${escHtml((o.funnel || "").split(" ")[0] || "Funil")}</span>
+          <span class="chip ${st.cls}">${st.label}</span>
+        </div>
       </div>
-      <span class="chip ${st.cls}" style="margin-left:auto">${st.label}</span>
     </div>
 
-    <h4 class="om-sec">Informações</h4>
-    <div class="info-grid">
-      ${infoTile("Formato", escHtml(o.format || "—"))}
-      ${infoTile("Status", st.label)}
-      ${infoTile("Idioma", `${o.lang === "Português" ? "🇧🇷 " : ""}${escHtml(o.lang || "—")}`)}
-      ${infoTile("Nicho", escHtml(nicheName))}
-      ${infoTile("VSL", isVsl ? "Sim" : "Não")}
-      ${infoTile("Anúncios", `<span class="grad-text">${o.ads ?? "—"}</span>`)}
-      ${infoTile("Dias no ar", libDays(o))}
-      ${infoTile("Ticket", o.price ? "R$ " + (+o.price).toFixed(2).replace(".", ",") : "—")}
+    <div class="om-cols" style="margin-top:16px">
+      <div>
+        <h4 class="om-sec" style="margin-top:0">Descrição <button class="btn-copy" data-copy="${escHtml(o.desc || "")}" ${o.desc ? "" : "hidden"}>⧉ Copiar descrição</button></h4>
+        <div class="om-desc">${o.desc ? escHtml(o.desc) : '<span class="hint">Sem copy salva — clique em ✏️ Editar e cole a copy do anúncio.</span>'}</div>
+
+        <h4 class="om-sec">Links Úteis</h4>
+        <div class="links-grid" style="grid-template-columns:1fr">
+          ${linkTile("📘", "Página no Facebook", "Acompanhe a página e analise os posts e interações", o.fbPage)}
+          ${linkTile("🌐", "Site do Anunciante", "Analise a página de destino e a experiência do funil", o.site)}
+          ${linkTile("🎬", "Link do Melhor Criativo", "Veja o criativo principal utilizado nas campanhas", o.creative)}
+          ${linkTile("📚", "Biblioteca de Anúncios", "Explore os anúncios ativos e históricos da oferta", libSearchUrl(o))}
+        </div>
+        ${o.notes ? `<h4 class="om-sec">Notas</h4><div class="om-desc">${escHtml(o.notes)}</div>` : ""}
+      </div>
+      <div>
+        <h4 class="om-sec" style="margin-top:0">Informações</h4>
+        <div class="info-grid" style="grid-template-columns:1fr 1fr">
+          ${infoTile("Formato", escHtml(o.format || "—"))}
+          ${infoTile("Status", st.label)}
+          ${infoTile("Idioma", `${o.lang === "Português" ? "🇧🇷 " : ""}${escHtml(o.lang || "—")}`)}
+          ${infoTile("Nicho", escHtml(nicheName))}
+          ${infoTile("VSL", isVsl ? "Sim" : "Não")}
+          ${infoTile("Anúncios", `<span class="grad-text">${o.ads ?? "—"}</span>`)}
+          ${infoTile("Dias rodando", `🟢 ${libDays(o)}`)}
+          ${infoTile("Ticket", o.price ? `<span style="color:var(--good)">R$ ${(+o.price).toFixed(2).replace(".", ",")}</span>` : "—")}
+        </div>
+        <div class="info-tile" style="margin-top:8px">
+          <span class="it-lbl">Publicado em</span>
+          <span class="it-val">${o.firstSeen ? o.firstSeen.split("-").reverse().join("/") : "—"}</span>
+        </div>
+      </div>
     </div>
 
-    <h4 class="om-sec">Descrição <button class="btn-copy" data-copy="${escHtml(o.desc || "")}" ${o.desc ? "" : "hidden"}>Copiar</button></h4>
-    <div class="om-desc">${o.desc ? escHtml(o.desc) : '<span class="hint">Sem copy salva — clique em ✏️ Editar e cole a copy do anúncio.</span>'}</div>
+    ${sameNiche.length ? `
+    <h4 class="om-sec">Ofertas do mesmo nicho</h4>
+    <div class="om-minis">
+      ${sameNiche
+        .map((x) => {
+          const xt = x.img && typeof imgById === "function" ? imgById(x.img) : null;
+          const xs = LIB_STATUS[x.status] || LIB_STATUS.observando;
+          return `<button class="om-mini" data-lib-view="${x.i}">
+            <span class="mm-emoji">${xt ? `<img src="${xt.dataUrl}" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:8px" />` : emoji}</span>
+            <strong>${escHtml(x.name)}</strong>
+            <span>${xs.label} · ${x.ads ?? "?"} anúncios</span>
+          </button>`;
+        })
+        .join("")}
+    </div>` : ""}
 
-    <h4 class="om-sec">Links Úteis</h4>
-    <div class="links-grid">
-      ${linkTile("📘", "Página no Facebook", "Acompanhe a página e analise os posts e interações", o.fbPage)}
-      ${linkTile("🌐", "Site do Anunciante", "Analise a página de destino e a experiência do funil", o.site)}
-      ${linkTile("🎬", "Link do Melhor Criativo", "Veja o criativo principal utilizado nas campanhas", o.creative)}
-      ${linkTile("📚", "Biblioteca de Anúncios", "Explore os anúncios ativos e históricos da oferta", libSearchUrl(o))}
-    </div>
-
-    ${o.notes ? `<h4 class="om-sec">Notas</h4><div class="om-desc">${escHtml(o.notes)}</div>` : ""}
-
-    <div class="form-actions" style="margin-top:18px">
-      <button class="btn btn-primary btn-sm" data-lib-edit="${idx}" id="omEditBtn">✏️ Editar oferta</button>
+    <div class="form-actions" style="margin-top:20px">
+      <button class="btn btn-primary btn-sm" id="omModelBtn">✨ MODELAR OFERTA</button>
+      <button class="btn btn-ghost btn-sm" data-lib-edit="${idx}" id="omEditBtn">✏️ Editar oferta</button>
       <button class="btn btn-ghost btn-sm" id="omCloseBtn">Fechar</button>
     </div>`;
   $("#offerModal").hidden = false;
@@ -234,7 +276,16 @@ function openOfferModal(idx) {
     closeOfferModal();
     libOpenForm(idx);
   });
+  $("#omModelBtn").addEventListener("click", () => {
+    closeOfferModal();
+    if (window.startModelagem) window.startModelagem(idx);
+  });
+  // sugestões do mesmo nicho abrem o preview da outra oferta
+  $("#offerModalBody").querySelectorAll(".om-mini[data-lib-view]").forEach((b) =>
+    b.addEventListener("click", () => openOfferModal(+b.dataset.libView))
+  );
 }
+window.openOfferModal = openOfferModal;
 
 function closeOfferModal() {
   $("#offerModal").hidden = true;

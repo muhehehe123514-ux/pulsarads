@@ -99,7 +99,8 @@
         <a href="#vendas" class="side-link" data-tool="vendas"><span class="si">💰</span> Rastreador de Vendas</a>
         <div class="side-group">Oportunidades</div>
         <a href="#ofertas" class="side-link" data-tool="ofertas"><span class="si">🔥</span> Explorador de Ofertas</a>
-        <a href="#biblioteca" class="side-link" data-tool="biblioteca"><span class="si">📚</span> Biblioteca de Ofertas <span class="side-new">novo</span></a>
+        <a href="#biblioteca" class="side-link" data-tool="biblioteca"><span class="si">📚</span> Biblioteca de Ofertas</a>
+        <a href="#modelar" class="side-link" data-tool="modelar"><span class="si">✨</span> Modelar Oferta <span class="side-new">novo</span></a>
         <a href="#lowticket" class="side-link" data-tool="lowticket"><span class="si">🧭</span> Modelador Low Ticket</a>
         <div class="side-group">Copy &amp; texto</div>
         <a href="#headlines" class="side-link" data-tool="headlines"><span class="si">✍️</span> Gerador de Headlines</a>
@@ -117,6 +118,7 @@
         <a href="#criativo" class="side-link" data-tool="criativo"><span class="si">🎨</span> Estúdio de Criativos</a>
         <a href="#audio" class="side-link" data-tool="audio"><span class="si">🔊</span> Gerador de Áudio</a>
         <a href="#transcritor" class="side-link" data-tool="transcritor"><span class="si">🎙️</span> Transcritor por Voz</a>
+        <a href="#ocr" class="side-link" data-tool="ocr"><span class="si">🖼️</span> Imagem → Texto <span class="side-new">novo</span></a>
         <a href="#metadados" class="side-link" data-tool="metadados"><span class="si">🧹</span> Limpador de Metadados</a>
       </nav>
       <div class="side-foot">
@@ -353,6 +355,13 @@
               <label>Headline <input type="text" id="crHeadline" value="Sua oferta em destaque" maxlength="60" /></label>
               <label>Subtítulo <input type="text" id="crSub" value="Descreva o benefício principal em uma frase curta" maxlength="90" /></label>
               <label>Texto do botão <input type="text" id="crCta" value="QUERO AGORA" maxlength="24" /></label>
+              <label>Imagem do produto (opcional)
+                <div class="form-actions" style="margin:0">
+                  <button type="button" class="btn btn-ghost btn-sm" id="btnCrPickImg">🖼️ Escolher da galeria</button>
+                  <button type="button" class="btn btn-ghost btn-sm btn-danger" id="btnCrClearImg" hidden>✕ Remover</button>
+                </div>
+                <span class="hint" id="crImgHint">Ou arraste uma imagem direto no preview ao lado →</span>
+              </label>
               <label>Preço no selo (opcional) <input type="number" id="crPrice" min="0" step="0.01" placeholder="27.00" /></label>
               <div class="form-actions">
                 <button class="btn btn-primary btn-sm" id="btnCrDownload">Baixar PNG ⬇️</button>
@@ -382,9 +391,107 @@
               </div>
             </div>
           </div>
-          <div class="card creative-preview">
+          <div class="card creative-preview" id="crPreviewCard">
             <canvas id="crCanvas" width="1080" height="1080"></canvas>
           </div>
+        </div>
+        <div class="card">
+          <div class="card-head-row">
+            <h3>🖼️ Minha galeria de imagens</h3>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);font-weight:600">
+              🔭 Luneta
+              <input type="text" id="galSearch" placeholder="buscar pela descrição…" style="width:220px" />
+            </label>
+          </div>
+          <label class="dropzone" id="galDrop">
+            <input type="file" id="galFile" accept="image/*" multiple hidden />
+            <span>📷 Clique ou arraste imagens aqui — na 1ª vez de cada imagem você descreve do que se trata (é o que faz a luneta funcionar)</span>
+          </label>
+          <div class="gallery-grid" id="galGrid"></div>
+        </div>
+      </section>
+
+      <!-- ===== IMAGEM → TEXTO (OCR) ===== -->
+      <section class="panel" id="tool-ocr">
+        <div class="panel-head">
+          <h2>🖼️ Imagem → Texto</h2>
+          <p>Extraia o texto de prints e criativos (OCR em português, direto no navegador). Depois selecione só os trechos que interessam — um ou vários — e copie.</p>
+        </div>
+        <div class="card">
+          <label class="dropzone" id="ocrDrop">
+            <input type="file" id="ocrFile" accept="image/*" hidden />
+            <span id="ocrDropText">📷 Clique ou arraste a imagem com texto aqui</span>
+          </label>
+          <div class="meta-info" id="ocrPreview" hidden></div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm" id="btnOcrRun" disabled>🔍 Extrair texto</button>
+            <span class="hint" id="ocrStatus">Na primeira extração o motor de OCR (~15 MB) é baixado — depois fica em cache.</span>
+          </div>
+        </div>
+        <div class="card" id="ocrResultCard" hidden>
+          <div class="card-head-row">
+            <h3>Trechos encontrados — marque o que quiser</h3>
+            <div class="form-actions" style="margin:0">
+              <button class="btn btn-ghost btn-sm" id="btnOcrAll">Marcar tudo</button>
+              <button class="btn btn-primary btn-sm" id="btnOcrCopy">Copiar selecionados 📋</button>
+            </div>
+          </div>
+          <div id="ocrLines"></div>
+        </div>
+      </section>
+
+      <!-- ===== MODELAR OFERTA ===== -->
+      <section class="panel" id="tool-modelar">
+        <div class="panel-head">
+          <h2>✨ Modelar Oferta</h2>
+          <p>Pegue uma oferta da Biblioteca e modele a sua: novos ângulos pra novos públicos → promessa → headline → página de vendas pronta, editável e publicável.</p>
+        </div>
+        <div class="card" id="mdStart">
+          <h3>1 · Escolha a oferta-base</h3>
+          <div class="form-grid">
+            <label>Oferta da Biblioteca <select id="mdOffer"></select></label>
+            <div class="form-actions">
+              <button class="btn btn-primary btn-sm" id="btnMdIdeas">Gerar novos ângulos ✨</button>
+            </div>
+          </div>
+          <div class="om-desc" id="mdBaseDesc" style="margin-top:12px" hidden></div>
+        </div>
+        <div class="card" id="mdIdeasCard" hidden>
+          <div class="card-head-row">
+            <h3>2 · Novos ângulos pra novos públicos — escolha um</h3>
+            <button class="btn btn-ghost btn-sm" id="btnMdPickIdea">✨ Escolher pra mim</button>
+          </div>
+          <div class="pick-list" id="mdIdeas"></div>
+        </div>
+        <div class="card" id="mdPromCard" hidden>
+          <div class="card-head-row">
+            <h3>3 · Promessas — escolha a mais forte</h3>
+            <button class="btn btn-ghost btn-sm" id="btnMdPickProm">✨ Escolher pra mim</button>
+          </div>
+          <div class="pick-list" id="mdProms"></div>
+        </div>
+        <div class="card" id="mdHeadCard" hidden>
+          <div class="card-head-row">
+            <h3>4 · Headline &amp; Subheadline</h3>
+            <button class="btn btn-ghost btn-sm" id="btnMdRegen">🎲 Gerar outras</button>
+          </div>
+          <div class="output-list" id="mdHeadOut"></div>
+          <div class="form-actions" style="margin-top:14px">
+            <button class="btn btn-primary" id="btnMdPage">Gerar minha página de vendas 🚀</button>
+          </div>
+        </div>
+        <div class="card" id="mdPageCard" hidden>
+          <div class="card-head-row">
+            <h3>5 · Sua página de vendas</h3>
+            <div class="form-actions" style="margin:0">
+              <button class="btn btn-ghost btn-sm" id="btnMdEdit">✏️ Editar: ON</button>
+              <button class="btn btn-ghost btn-sm" id="btnMdDownload">⬇ Baixar HTML</button>
+              <button class="btn btn-primary btn-sm" id="btnMdPublish">🌐 Publicar no Netlify</button>
+            </div>
+          </div>
+          <p class="hint" style="margin-bottom:12px">✏️ Com a edição ligada, clique em qualquer texto da página pra reescrever. Arraste imagens do navegador direto pros espaços de foto. Tudo é salvo no HTML final.</p>
+          <div class="page-frame"><iframe id="mdFrame" title="Preview da página de vendas"></iframe></div>
+          <div id="mdPublishOut" style="margin-top:14px"></div>
         </div>
       </section>
 
@@ -595,12 +702,16 @@
                 <option value="all" selected>Todas</option><option value="video">Só vídeo</option><option value="image">Só imagem</option>
               </select>
             </label>
-            <label>Qualificador de intenção
+            <label>Gatilho de venda (filtro sempre ativo)
               <select id="opQualifier">
-                <option value="" selected>Automático (mistura)</option>
-                <option value="ebook">ebook</option><option value="curso online">curso online</option>
-                <option value="planilha">planilha</option><option value="apostila">apostila</option>
-                <option value="método">método</option><option value="acesso imediato">acesso imediato</option>
+                <option value="" selected>Automático — mistura os melhores</option>
+                <option value="por apenas">"por apenas" (copy de vendedor)</option>
+                <option value="R$ 19,90">"R$ 19,90" (preço na copy)</option>
+                <option value="R$ 27">"R$ 27" (preço na copy)</option>
+                <option value="R$ 37">"R$ 37" (preço na copy)</option>
+                <option value="acesso imediato">"acesso imediato"</option>
+                <option value="para imprimir">"para imprimir" (PDF/kit)</option>
+                <option value="pdf">"pdf" (material digital)</option>
               </select>
             </label>
             <label>Palavra-chave extra (opcional) <input type="text" id="opCustomKw" placeholder="Ex.: bolo no pote, tráfego pago…" /></label>
@@ -707,6 +818,7 @@
                 <option value="morta">💀 Morreu</option>
               </select>
             </label>
+            <label>Imagem do produto (galeria) <select id="lfImg"><option value="">Sem imagem</option></select></label>
             <label>Formato
               <select id="lfFormat">
                 <option>X1 Low Ticket</option><option>Ebook</option><option>Curso online</option>
@@ -822,6 +934,30 @@
     </main>
   </div>
 
+  <!-- modal: descrição obrigatória de imagem nova -->
+  <div class="modal-overlay" id="imgDescModal" hidden>
+    <div class="modal-card" style="width:min(460px,100%)">
+      <h3 style="margin-bottom:6px">🔭 Descreva esta imagem</h3>
+      <p class="hint" style="margin-bottom:14px">Obrigatório só na primeira vez de cada imagem nova — é o que faz a luneta de pesquisa funcionar.</p>
+      <img id="imgDescPreview" alt="" style="width:100%;max-height:220px;object-fit:contain;border-radius:10px;border:1px solid var(--border);margin-bottom:14px" />
+      <input type="text" id="imgDescInput" placeholder="Ex.: pote de bolo de chocolate com colher dourada" maxlength="120" />
+      <div class="form-actions" style="margin-top:14px">
+        <button class="btn btn-primary btn-sm" id="btnImgDescSave">Salvar na galeria 💾</button>
+        <button class="btn btn-ghost btn-sm" id="btnImgDescCancel">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- modal: escolher imagem da galeria -->
+  <div class="modal-overlay" id="galleryModal" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="galleryModalClose" aria-label="Fechar">✕</button>
+      <h3 style="margin-bottom:10px">🖼️ Escolher imagem da galeria</h3>
+      <input type="text" id="galPickSearch" placeholder="🔭 buscar pela descrição…" style="margin-bottom:14px" />
+      <div class="gallery-grid" id="galPickGrid"></div>
+    </div>
+  </div>
+
   <!-- modal de detalhes da oferta -->
   <div class="modal-overlay" id="offerModal" hidden>
     <div class="modal-card" role="dialog" aria-modal="true">
@@ -834,9 +970,12 @@
   <div class="viz-tooltip" id="vizTooltip" hidden></div>
 
   <script src="js/app.js"></script>
+  <script src="js/images.js"></script>
   <script src="js/tools2.js"></script>
   <script src="js/meta.js"></script>
   <script src="js/library.js"></script>
+  <script src="js/ocr.js"></script>
+  <script src="js/modelar.js"></script>
   <script src="js/auth.js"></script>
 </body>
 </html>

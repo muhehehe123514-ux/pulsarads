@@ -723,6 +723,36 @@ function drawCreative(t = 1, loop = 0) {
     ctx.textAlign = centered ? "center" : "left";
   }
 
+  // imagem do produto (galeria)
+  const prodImg = window.getStudioImage ? window.getStudioImage() : null;
+  if (prodImg) {
+    const aI = stage(0.72, 1);
+    const size = story ? 460 : 380;
+    const px = centered || story ? W / 2 - size / 2 : W - size - W * 0.07;
+    const py = story ? H - size - H * 0.09 : layout === 2 ? H * 0.06 : H - size - H * 0.08;
+    ctx.save();
+    ctx.globalAlpha = aI;
+    ctx.translate(px + size / 2, py + size / 2);
+    ctx.scale(0.9 + 0.1 * aI, 0.9 + 0.1 * aI);
+    ctx.rotate(loop > 0 ? Math.sin(loop * 1.6) * 0.015 : 0);
+    ctx.translate(-(px + size / 2), -(py + size / 2));
+    ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
+    ctx.beginPath(); ctx.roundRect(px, py, size, size, 28);
+    ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.clip();
+    // cover: preenche o quadro mantendo proporção
+    const r = Math.max(size / prodImg.naturalWidth, size / prodImg.naturalHeight);
+    const iw = prodImg.naturalWidth * r, ih2 = prodImg.naturalHeight * r;
+    ctx.drawImage(prodImg, px + (size - iw) / 2, py + (size - ih2) / 2, iw, ih2);
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = aI;
+    ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.roundRect(px, py, size, size, 28); ctx.stroke();
+    ctx.restore();
+  }
+
   // rodapé sutil
   ctx.globalAlpha = 0.5;
   ctx.font = "500 28px 'Inter', sans-serif";
@@ -733,6 +763,7 @@ function drawCreative(t = 1, loop = 0) {
 }
 
 const renderCreative = () => drawCreative(1, 0);
+window.renderCreativeStudio = renderCreative;
 
 ["crFormat", "crTheme", "crLayout", "crPattern", "crBadge", "crHeadline", "crSub", "crCta", "crPrice", "crVidAnim"].forEach((id) =>
   $("#" + id).addEventListener("input", renderCreative)
