@@ -446,6 +446,81 @@ function renderScale() {
 ["scBudget", "scCpm", "scCtr", "scConv", "scTicket", "scDecay"].forEach((id) => $("#" + id).addEventListener("input", renderScale));
 renderScale();
 
+// ---------- Simulador com campanhas reais (lê o snapshot do Meta) ----------
+function scMetricsOf(c) {
+  const impressions = c.impressions || 0;
+  const linkClicks = c.linkClicks || c.clicks || 0;
+  const cpm = impressions > 0 ? (c.spend / impressions) * 1000 : (c.cpc && c.ctr ? c.cpc * c.ctr * 10 : 15);
+  const ctr = impressions > 0 ? (linkClicks / impressions) * 100 : (c.ctr || 1.5);
+  const conv = linkClicks > 0 ? (c.purchases / linkClicks) * 100 : 2;
+  const ticket = c.purchases > 0 ? c.revenue / c.purchases : 0;
+  const roas = c.spend > 0 ? c.revenue / c.spend : 0;
+  return { cpm, ctr, conv, ticket, roas, spend: c.spend, purchases: c.purchases, revenue: c.revenue };
+}
+
+// potencial ao escalar 3x com 8% de perda de eficiência/nível
+function scPotential(m) {
+  if (m.roas <= 0 || m.ticket <= 0) return 0;
+  const invest = Math.max(m.spend, 30) * 3;
+  const effCpm = m.cpm * Math.pow(1.08, 2);
+  const clicks = (invest / effCpm) * 1000 * (m.ctr / 100);
+  const sales = clicks * (m.conv / 100);
+  return sales * m.ticket - invest;
+}
+
+function renderScaleLive() {
+  const box = $("#scLive");
+  if (!box) return;
+  let snap = null;
+  try { snap = JSON.parse(localStorage.getItem("pulsar_meta_snapshot") || "null"); } catch (_) {}
+  const camps = (snap?.campaigns || []).filter((c) => c.spend > 0);
+  if (!camps.length) {
+    box.innerHTML = `<p class="hint">Conecte sua conta no <a class="link-inline" href="#meta">📡 Meta Ads ao vivo</a> e atualize — aqui vão aparecer suas campanhas reais, já rankeadas por quem tem mais potencial de faturar ao escalar. Clique numa pra jogar os números dela no simulador.</p>`;
+    return;
+  }
+  const rows = camps
+    .map((c) => ({ c, m: scMetricsOf(c), pot: scPotential(scMetricsOf(c)) }))
+    .sort((a, b) => b.pot - a.pot);
+  const best = rows[0];
+  box.innerHTML = `
+    <p class="hint" style="margin-bottom:12px">Ranking por potencial de lucro ao escalar 3× (período: ${escHtml(snap.periodLabel || "—")}). 🏆 = melhor aposta pra escalar agora.</p>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Campanha</th><th>ROAS</th><th>Ticket</th><th>Vendas</th><th>Potencial 3×</th><th></th></tr></thead>
+      <tbody>${rows.map((r, i) => `<tr>
+        <td>${i === 0 ? "🏆 " : ""}${escHtml(r.c.name)}</td>
+        <td>${r.m.roas.toFixed(2)}×</td>
+        <td>${BRL.format(r.m.ticket)}</td>
+        <td>${r.c.purchases || 0}</td>
+        <td class="${r.pot >= 0 ? "pos" : "neg"}">${BRL.format(r.pot)}/dia</td>
+        <td><button class="btn-copy" data-sc-load="${escHtml(r.c.name)}">Simular ▶</button></td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+    <p class="hint" style="margin-top:10px">💡 Aposta do site: <strong>${escHtml(best.c.name)}</strong> — melhor relação entre ROAS (${best.m.roas.toFixed(2)}×) e margem pra escalar.</p>`;
+
+  box.querySelectorAll("[data-sc-load]").forEach((b) => {
+    b.addEventListener("click", () => {
+      const c = camps.find((x) => x.name === b.dataset.scLoad);
+      if (!c) return;
+      const m = scMetricsOf(c);
+      $("#scBudget").value = Math.max(1, Math.round(c.spend));
+      $("#scCpm").value = m.cpm.toFixed(2);
+      $("#scCtr").value = m.ctr.toFixed(2);
+      $("#scConv").value = m.conv.toFixed(2);
+      $("#scTicket").value = m.ticket.toFixed(2);
+      renderScale();
+      toast(`Números reais de "${c.name}" carregados 📈`);
+      $("#scaleTable").scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+}
+window.renderScaleLive = renderScaleLive;
+$("#btnScSync")?.addEventListener("click", () => {
+  if (window.fbLoadCampaigns) { window.fbLoadCampaigns(); toast("Buscando campanhas no Meta…"); }
+  else toast("Conecte o Meta Ads primeiro 📡");
+});
+window.addEventListener("hashchange", () => { if (location.hash === "#escala") renderScaleLive(); });
+renderScaleLive();
+
 // ============================================================
 // 10) RADAR DE CONCORRENTES (bibliotecas oficiais)
 // ============================================================
@@ -481,9 +556,17 @@ const CR_THEMES = [
   { name: "Chiclete (rosa → roxo)", g: ["#ec4899", "#8b5cf6"], accent: "#ffffff", ctaBg: "#ffffff", ctaText: "#db2777" },
   { name: "Aço (cinza-azulado)", g: ["#475569", "#1e293b"], accent: "#cbd5e1", ctaBg: "#e2e8f0", ctaText: "#0f172a" },
   { name: "Noir (preto + amarelo)", g: ["#18181b", "#000000"], accent: "#facc15", ctaBg: "#facc15", ctaText: "#18181b" },
+  { name: "Menta (verde-água)", g: ["#14b8a6", "#0f766e"], accent: "#ccfbf1", ctaBg: "#f0fdfa", ctaText: "#0f766e" },
+  { name: "Coral (rosa-salmão)", g: ["#fb7185", "#e11d48"], accent: "#ffe4e6", ctaBg: "#ffffff", ctaText: "#e11d48" },
+  { name: "Índigo (azul royal)", g: ["#6366f1", "#4338ca"], accent: "#e0e7ff", ctaBg: "#ffffff", ctaText: "#4338ca" },
+  { name: "Vinho (bordô premium)", g: ["#7f1d1d", "#450a0a"], accent: "#fecaca", ctaBg: "#fbbf24", ctaText: "#450a0a" },
+  { name: "Turquesa neon", g: ["#06b6d4", "#3b82f6"], accent: "#cffafe", ctaBg: "#a7f3d0", ctaText: "#0e7490" },
+  { name: "Grafite + verde-limão", g: ["#111827", "#1f2937"], accent: "#a3e635", ctaBg: "#a3e635", ctaText: "#111827" },
+  { name: "Lavanda suave", g: ["#a78bfa", "#c4b5fd"], accent: "#f5f3ff", ctaBg: "#7c3aed", ctaText: "#ffffff" },
+  { name: "Areia (nude quente)", g: ["#d6a77a", "#a16207"], accent: "#fef3c7", ctaBg: "#78350f", ctaText: "#fef3c7" },
 ];
-const CR_LAYOUTS = ["Clássico (à esquerda)", "Centralizado", "Base impactante", "Painel diagonal", "Moldura minimalista", "Explosão de raios"];
-const CR_PATTERNS = ["Sem padrão", "Bolinhas", "Grade fina", "Ondas"];
+const CR_LAYOUTS = ["Clássico (à esquerda)", "Centralizado", "Base impactante", "Painel diagonal", "Moldura minimalista", "Explosão de raios", "Faixa inferior", "Cartão central", "Topo alinhado"];
+const CR_PATTERNS = ["Sem padrão", "Bolinhas", "Grade fina", "Ondas", "Diagonais", "Confete", "Malha suave"];
 
 $("#crTheme").innerHTML = CR_THEMES.map((t, i) => `<option value="${i}">${t.name}</option>`).join("");
 $("#crLayout").innerHTML = CR_LAYOUTS.map((l, i) => `<option value="${i}">${l}</option>`).join("");
@@ -529,6 +612,28 @@ function drawPattern(ctx, W, H, pattern, loop) {
         ctx.lineTo(x, y + Math.sin(x / 90 + y + loop * 2) * 22);
       ctx.stroke();
     }
+  } else if (pattern === 4) {
+    ctx.lineWidth = 3;
+    for (let d = -H; d < W; d += 90) {
+      ctx.beginPath(); ctx.moveTo(d + drift, 0); ctx.lineTo(d + drift + H, H); ctx.stroke();
+    }
+  } else if (pattern === 5) {
+    // confete: retângulos girados
+    const rnd = (n) => (Math.sin(n * 999.7) * 43758.5) % 1;
+    for (let i = 0; i < 46; i++) {
+      const x = Math.abs(rnd(i)) * W, y = (Math.abs(rnd(i + 7)) * H + loop * 30) % H;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(rnd(i + 3) * 6);
+      ctx.fillRect(-9, -5, 18, 10); ctx.restore();
+    }
+  } else if (pattern === 6) {
+    // malha suave de losangos
+    ctx.lineWidth = 1.5;
+    for (let y = 0; y < H + 60; y += 60)
+      for (let x = 0; x < W + 60; x += 60) {
+        ctx.beginPath();
+        ctx.moveTo(x + 30, y); ctx.lineTo(x + 60, y + 30); ctx.lineTo(x + 30, y + 60); ctx.lineTo(x, y + 30);
+        ctx.closePath(); ctx.stroke();
+      }
   }
   ctx.restore();
 }
@@ -606,14 +711,45 @@ function drawCreative(t = 1, loop = 0) {
       ctx.closePath(); ctx.fill();
     }
     ctx.restore();
+  } else if (layout === 6) {
+    // faixa inferior sólida — texto embaixo
+    const g6 = ctx.createLinearGradient(0, H * 0.45, 0, H);
+    g6.addColorStop(0, "rgba(0,0,0,0)"); g6.addColorStop(1, "rgba(0,0,0,0.55)");
+    ctx.fillStyle = g6; ctx.fillRect(-W * 0.1, H * 0.4, W * 1.2, H * 0.7);
+    ctx.globalAlpha = 0.1; ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(W * 0.15, H * 0.16, W * 0.26, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
+  } else if (layout === 7) {
+    // cartão central translúcido
+    const cw = W * 0.82, ch = story ? H * 0.5 : H * 0.62;
+    const cxp = (W - cw) / 2, cyp = (H - ch) / 2;
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.beginPath(); ctx.roundRect(cxp, cyp, cw, ch, 40); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(cxp, cyp, cw, ch, 40); ctx.stroke();
+  } else if (layout === 8) {
+    // topo alinhado — barra fina de destaque no topo
+    ctx.globalAlpha = 0.16; ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(W * 0.88, H * 0.9, W * 0.3, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.fillRect(W * 0.09, H * (story ? 0.12 : 0.14), 90, 8);
   }
 
   // conteúdo
-  const centered = layout === 1 || layout === 4 || layout === 5;
+  const centered = layout === 1 || layout === 4 || layout === 5 || layout === 7;
   const cx = centered ? W / 2 : W * 0.09;
   ctx.textAlign = centered ? "center" : "left";
   const maxW = layout === 3 ? W * 0.52 : W * 0.82;
-  let cy = layout === 2 ? H * (story ? 0.52 : 0.4) : story ? H * 0.3 : H * (centered ? 0.22 : 0.24);
+  let cy = layout === 6
+    ? H * (story ? 0.58 : 0.5)
+    : layout === 7
+      ? H * (story ? 0.28 : 0.26)
+      : layout === 8
+        ? H * (story ? 0.18 : 0.2)
+        : layout === 2
+          ? H * (story ? 0.52 : 0.4)
+          : story ? H * 0.3 : H * (centered ? 0.22 : 0.24);
 
   const slideY = anim === "slide" ? 60 : 0;
 
@@ -777,6 +913,61 @@ $("#btnCrRandom").addEventListener("click", () => {
   toast("Novo modelo sorteado 🎲");
 });
 
+// ---------- Gerar criativo com IA (prompt automático + abrir IA de imagem) ----------
+const AI_TARGETS = {
+  gemini: { name: "Gemini", url: "https://gemini.google.com/app" },
+  chatgpt: { name: "ChatGPT", url: "https://chatgpt.com/?model=gpt-4o&q=" },
+  copilot: { name: "Copilot Designer", url: "https://copilot.microsoft.com/images/create" },
+  leonardo: { name: "Leonardo.ai", url: "https://app.leonardo.ai/image-generation" },
+};
+
+function refreshCrAiOffers() {
+  const sel = $("#crAiOffer");
+  if (!sel || typeof loadOffers !== "function") return;
+  const offers = loadOffers();
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">— prompt livre —</option>` +
+    offers.map((o, i) => `<option value="${i}">${escHtml(o.name)}</option>`).join("");
+  if (cur && sel.querySelector(`option[value="${cur}"]`)) sel.value = cur;
+}
+
+function buildAiPrompt() {
+  const sel = $("#crAiOffer");
+  const offers = typeof loadOffers === "function" ? loadOffers() : [];
+  const o = sel && sel.value !== "" ? offers[+sel.value] : null;
+  const headline = $("#crHeadline").value.trim() || (o ? o.name : "Sua oferta em destaque");
+  const format = $("#crFormat").value === "story" ? "formato vertical 9:16 (story/reels)" : "formato quadrado 1:1 (feed)";
+  const themeName = CR_THEMES[+$("#crTheme").value]?.name || "cores vibrantes";
+  // se houver uma oferta modelada em aberto, usa o ângulo/promessa dela
+  const angle = (typeof md === "object" && md && md.idea) ? ` Ângulo: ${md.idea}.` : "";
+  const desc = o ? (o.desc || o.notes || "") : "";
+  return `Crie um anúncio publicitário profissional de alta conversão (${format}) para a oferta "${headline}".` +
+    (desc ? ` Sobre o produto: ${desc.replace(/\s+/g, " ").slice(0, 240)}.` : "") +
+    angle +
+    ` Estilo visual: ${themeName.toLowerCase()}, moderno, com forte apelo comercial, iluminação de estúdio, alto contraste e espaço para texto. ` +
+    `Inclua o texto "${headline}" em destaque e um botão de call-to-action "${($("#crCta").value.trim() || "QUERO AGORA").toUpperCase()}". ` +
+    `Sem marca d'água, sem texto embaçado, tipografia legível em português do Brasil.`;
+}
+
+$("#btnCrAiBuild").addEventListener("click", () => {
+  $("#crAiPrompt").value = buildAiPrompt();
+  toast("Prompt montado ✨ Revise e escolha a IA");
+});
+
+$$(".ai-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    let prompt = $("#crAiPrompt").value.trim();
+    if (!prompt) { prompt = buildAiPrompt(); $("#crAiPrompt").value = prompt; }
+    const t = AI_TARGETS[btn.dataset.ai];
+    copyText(prompt, `Prompt copiado! Abrindo ${t.name} — cole com Ctrl+V 🤖`);
+    const url = btn.dataset.ai === "chatgpt" ? t.url + encodeURIComponent(prompt) : t.url;
+    setTimeout(() => window.open(url, "_blank", "noopener"), 350);
+  });
+});
+
+window.addEventListener("hashchange", () => { if (location.hash === "#criativo") refreshCrAiOffers(); });
+setTimeout(refreshCrAiOffers, 0);
+
 $("#btnCrDownload").addEventListener("click", () => {
   renderCreative();
   const a = document.createElement("a");
@@ -839,18 +1030,31 @@ renderCreative();
 const synth = window.speechSynthesis;
 let voices = [];
 
+// só as vozes NEURAIS/naturais em português (as mais realistas)
+const NEURAL_RE = /natural|neural|online|google|multilingual|premium|enhanced|siri|luciana|thalita|francisca|antonio|brenda|donato/i;
+
 function loadVoices() {
   voices = synth ? synth.getVoices() : [];
   const sel = $("#ttsVoice");
   if (!voices.length) {
-    sel.innerHTML = `<option>Nenhuma voz disponível neste navegador</option>`;
+    sel.innerHTML = `<option>Carregando vozes…</option>`;
     return;
   }
   const pt = voices.filter((v) => v.lang.toLowerCase().startsWith("pt"));
-  const rest = voices.filter((v) => !v.lang.toLowerCase().startsWith("pt"));
-  sel.innerHTML = [...pt, ...rest]
-    .map((v) => `<option value="${escHtml(v.name)}">${escHtml(v.name)} (${v.lang})${v.lang.toLowerCase().startsWith("pt") ? " 🇧🇷" : ""}</option>`)
+  let neural = pt.filter((v) => NEURAL_RE.test(v.name));
+  let note = "";
+  if (!neural.length) {
+    // sistema sem voz neural instalada: mostra as de melhor qualidade disponíveis
+    neural = pt.length ? pt : voices.slice(0, 8);
+    note = pt.length
+      ? "Seu sistema não tem voz neural instalada — mostrando as vozes em português disponíveis. Pra vozes neurais, use o Edge ou instale vozes 'Natural' nas configurações de fala do Windows."
+      : "Nenhuma voz em português neste navegador — use o Chrome ou o Edge.";
+  }
+  sel.innerHTML = neural
+    .map((v) => `<option value="${escHtml(v.name)}">${escHtml(v.name.replace(/microsoft/i, "").trim())} ${/pt.?br/i.test(v.lang) ? "🇧🇷" : "🇵🇹"}</option>`)
     .join("");
+  const hint = $("#ttsHint");
+  if (hint && note) hint.textContent = note;
 }
 if (synth) {
   loadVoices();

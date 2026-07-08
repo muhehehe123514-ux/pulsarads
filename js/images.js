@@ -32,6 +32,9 @@ function compressImage(file) {
   });
 }
 
+// exposto pra páginas de vendas: comprime e devolve o dataURL, sem passar pela galeria
+window.compressImageFile = compressImage;
+
 // fila de descrições: cada imagem NOVA passa pelo modal (obrigatório 1ª vez)
 let descQueue = [];
 let descResolve = null;

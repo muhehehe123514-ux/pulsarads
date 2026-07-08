@@ -446,6 +446,13 @@ section { position: relative; padding: 100px 0; }
   margin: 0 auto;
   align-items: stretch;
 }
+.pricing-wrap.pricing-3 {
+  grid-template-columns: 1fr 1.1fr 1fr;
+  max-width: 1080px;
+}
+@media (max-width: 860px) {
+  .pricing-wrap.pricing-3 { grid-template-columns: 1fr; max-width: 480px; }
+}
 .price-card {
   border-radius: 20px;
   padding: 38px 34px;

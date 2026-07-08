@@ -22,6 +22,20 @@ $("#ocrFile").addEventListener("change", (e) => {
   e.target.value = "";
 });
 
+// colar imagem da área de transferência (Ctrl+V / Cmd+V) — só quando o OCR está aberto
+window.addEventListener("paste", (e) => {
+  if (location.hash !== "#ocr") return;
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const it of items) {
+    if (it.type && it.type.indexOf("image") === 0) {
+      const f = it.getAsFile();
+      if (f) { setOcrFile(f); toast("Imagem colada 📋 — clique em Extrair texto"); e.preventDefault(); }
+      return;
+    }
+  }
+});
+
 function setOcrFile(f) {
   if (!/^image\//.test(f.type)) return toast("Só imagens 📷");
   ocrFile = f;

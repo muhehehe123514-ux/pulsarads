@@ -183,10 +183,12 @@ function saveMetaSnapshot(preset) {
       campaigns: fbCampaigns.map((c) => ({
         name: c.name, spend: c.spend, purchases: c.purchases, revenue: c.revenue,
         clicks: c.clicks, linkClicks: c.linkClicks, lpv: c.lpv, ic: c.ic, payInfo: c.payInfo,
+        impressions: c.impressions, ctr: c.ctr, cpc: c.cpc,
       })),
     })
   );
   if (window.renderVendas) window.renderVendas();
+  if (window.renderScaleLive) window.renderScaleLive();
 }
 
 // ---------- Funil de Conversão por campanha ----------

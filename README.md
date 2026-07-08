@@ -6,16 +6,26 @@
 
 ## O que tem dentro
 
-Tudo roda **100% no navegador** — site estático, sem backend. Contas, sessão e dados ficam no localStorage (senhas guardadas como hash PBKDF2, nunca em texto puro). Plano gratuito com 4 ferramentas básicas; **Pro por R$ 40/mês via PIX** desbloqueia as 21, com ativação por código.
+Tudo roda **100% no navegador** — site estático, sem backend. Contas, sessão e dados ficam no localStorage (senhas guardadas como hash PBKDF2, nunca em texto puro).
+
+**Três planos** (pagamento via PIX com QR Code na tela; ativação por código que embute plano + duração):
+
+| Plano | Preço | O que muda |
+|---|---|---|
+| 🌱 Grátis | R$ 0 | Muita ferramenta liberada, com limite de **~15 usos das ferramentas a cada 5h**. Explorador, Biblioteca e Modelar bloqueados. |
+| ⚡ Pro | R$ 40/mês | Abre 🔥 Explorador, 📚 Biblioteca e ✨ Modelar; limite de **~70 usos a cada 5h**. |
+| 🚀 Max | R$ 130/mês | Usos **ilimitados**, sem espera. |
+
+O limite não é por tempo, e sim por **número de usos das ferramentas** (cada função acionada conta 1), que recarrega sozinho a cada 5h — parecido com o limite de mensagens do Claude/ChatGPT. Pelo painel Admin o dono gera códigos escolhendo plano e duração (de **1 dia** a **vitalício**) e pode **revogar** o acesso quando quiser.
 
 | Ferramenta | O que faz |
 |---|---|
 | 📡 Meta Ads ao vivo | Marketing API oficial (token próprio): campanhas, gasto, compras, ROAS ao vivo, funil de conversão por campanha e pausar/ativar |
-| 🔥 Explorador de Ofertas | Filtros por nicho/país/idioma/mídia + bateria de pesquisas automáticas na biblioteca de anúncios do Facebook, com fila e pesquisas salvas |
+| 🔥 Explorador de Ofertas | Filtros por nicho/país/idioma/mídia + bateria de pesquisas automáticas na biblioteca de anúncios do Facebook, com fila e pesquisas salvas (exclusivo Pro/Max) |
 | 💰 Rastreador de Vendas | Vendas, lucro, ticket e ROAS puxados automaticamente da conta conectada do Facebook Ads, por campanha |
-| ✨ Modelar Oferta | Novos ângulos pra novos públicos → promessa → headline → página de vendas de 10 seções, editável, com arrastar-imagem e publicação no Netlify |
-| 🖼️ Imagem → Texto | OCR pt-BR no navegador (Tesseract.js) com seleção de trechos |
-| 🧭 Modelador Low Ticket | Oferta, copy, funil (bump + upsell), estrutura de campanha e checklist prontos a partir de 4 campos |
+| ✨ Modelar Oferta | Novos ângulos e promessas fortes → headline → página de vendas editável com **paletas de cor, várias fontes**, preview celular/tablet, upload de imagem por clique, avatar nos depoimentos, adicionar/remover seções e link de checkout nos botões — download + publicação no Netlify |
+| 🖼️ Imagem → Texto | OCR pt-BR no navegador (Tesseract.js) com seleção de trechos; aceita **colar imagem com Ctrl+V** |
+| 🧭 Modelador Low Ticket | Oferta com mecanismo, copy Gancho-Agita-Solução, funil de valor (bump+upsell+downsell), campanha, regras de escala e checklist |
 | 🎯 UTMs Dinâmicas | Macros de rastreamento do Meta ({{campaign.name}}…), Google (ValueTrack) e TikTok, no padrão Utmify |
 | ✍️ Gerador de Headlines | 10 títulos persuasivos por clique, baseados em frameworks de copywriting |
 | 🔁 Reescritor de Copy | Variações com sinônimos e conectores, mantendo a estrutura |

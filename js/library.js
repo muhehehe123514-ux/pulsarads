@@ -18,14 +18,6 @@ const LIB_STATUS = {
   morta: { label: "💀 Morreu", cls: "chip-dead" },
 };
 
-const SAMPLE_OFFERS = [
-  { name: "Bolo no Pote Lucrativo", advertiser: "Doces & Lucro", niche: 0, country: "BR", ads: 34, price: 19.9, funnel: "Página de vendas direta", status: "escalando", format: "X1 Low Ticket", lang: "Português", desc: "🍰 Aprenda a fazer bolos no pote que vendem todos os dias. Kit completo com 50 receitas testadas, tabela de preços e embalagens. Comece hoje com menos de R$ 50 de investimento!", fbPage: "", site: "", creative: "", url: "", notes: "(exemplo) Promessa de renda com doces; order bump de embalagens.", firstSeen: "2026-06-12", lastChecked: "2026-07-06", fav: true },
-  { name: "Crochê que Vende", advertiser: "Ateliê Criativo", niche: 2, country: "BR", ads: 21, price: 27, funnel: "VSL", status: "validando", format: "X1 Low Ticket", lang: "Português", desc: "🧶 100 receitas de crochê pra transformar seu hobby em renda extra. Passo a passo em vídeo, tamanhos variados e bônus incríveis. Sem complicação, sem enrolação!", fbPage: "", site: "", creative: "", url: "", notes: "(exemplo) VSL curta com depoimentos; upsell de receitas premium.", firstSeen: "2026-06-20", lastChecked: "2026-07-05", fav: false },
-  { name: "Adestramento Express", advertiser: "Mundo Pet", niche: 3, country: "BR", ads: 12, price: 37, funnel: "Quiz", status: "observando", format: "Curso online", lang: "Português", desc: "🐶 Seu cão te obedecendo em 21 dias, sem gritar e sem petisco. Método usado por adestradores profissionais, agora acessível pra qualquer tutor.", fbPage: "", site: "", creative: "", url: "", notes: "(exemplo) Quiz de comportamento antes do checkout.", firstSeen: "2026-06-28", lastChecked: "2026-07-04", fav: false },
-  { name: "Planner Sair das Dívidas", advertiser: "Finanças Leves", niche: 12, country: "BR", ads: 8, price: 19.9, funnel: "Página de vendas direta", status: "observando", format: "Ebook", lang: "Português", desc: "💰 O planner que já ajudou milhares de famílias a organizarem as contas. Imprima, preencha e veja pra onde vai cada real do seu salário.", fbPage: "", site: "", creative: "", url: "", notes: "(exemplo) Criativo de planilha em vídeo; público 30+.", firstSeen: "2026-07-01", lastChecked: "2026-07-06", fav: false },
-  { name: "Inglês em 90 Dias", advertiser: "Fluência Rápida", niche: 10, country: "BR", ads: 3, price: 47, funnel: "VSL", status: "morta", format: "Curso online", lang: "Português", desc: "🗣️ Do zero à conversação em 90 dias com 15 minutos por dia.", fbPage: "", site: "", creative: "", url: "", notes: "(exemplo) Caiu de 25 pra 3 anúncios em duas semanas.", firstSeen: "2026-05-30", lastChecked: "2026-07-02", fav: false },
-];
-
 // ---------- selects ----------
 $("#lfNiche").innerHTML =
   NICHES.map((n, i) => `<option value="${i}">${n.name}</option>`).join("") + `<option value="-1">Outro</option>`;
@@ -57,7 +49,7 @@ function renderLibrary() {
 
   const grid = $("#offerGrid");
   if (!list.length) {
-    grid.innerHTML = `<div class="viz-empty" style="grid-column:1/-1">Nenhuma oferta ${offers.length ? "com esses filtros" : "ainda — clique em ➕ Nova oferta ou Carregar exemplo"}.</div>`;
+    grid.innerHTML = `<div class="viz-empty" style="grid-column:1/-1">${offers.length ? "Nenhuma oferta com esses filtros." : "Sua Biblioteca está vazia. Ela guarda <strong>só ofertas reais</strong>: garimpe na <a class=\"link-inline\" href=\"#ofertas\">🔥 Explorador de Ofertas</a> e clique em ➕ Biblioteca, importe pelo bookmarklet da biblioteca do Facebook, ou clique em ➕ Nova oferta pra cadastrar uma que você encontrou."}</div>`;
     return;
   }
 
@@ -324,12 +316,6 @@ $("#offerGrid").addEventListener("click", (e) => {
 
 ["libSearch", "libNicheFilter", "libStatusFilter"].forEach((id) => $("#" + id).addEventListener("input", renderLibrary));
 
-$("#btnLibSample").addEventListener("click", () => {
-  saveOffers(SAMPLE_OFFERS);
-  renderLibrary();
-  toast("Ofertas de exemplo carregadas ✨ (troque pelas suas garimpadas!)");
-});
-
 $("#btnLibExport").addEventListener("click", () => {
   const blob = new Blob([JSON.stringify(loadOffers(), null, 2)], { type: "application/json" });
   const a = document.createElement("a");
@@ -397,6 +383,6 @@ window.libAddFromSearch = (q, url, country) => {
   openOfferModal(idx);
 };
 
-// primeira visita: a Biblioteca ja chega populada com ofertas de exemplo
-if (localStorage.getItem(LIB_KEY) === null) saveOffers(SAMPLE_OFFERS);
+// A Biblioteca guarda SÓ ofertas reais: mineradas da biblioteca do Facebook
+// (bookmarklet/importação) ou adicionadas por você pelo Explorador. Sem seed.
 renderLibrary();

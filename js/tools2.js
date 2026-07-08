@@ -322,43 +322,52 @@ renderMacros();
 // ============================================================
 $("#ltNiche").innerHTML = NICHES.map((n, i) => `<option value="${i}">${n.name}</option>`).join("");
 
-const LT_NAMES = ["Guia Prático", "Método Express", "Planner Completo", "Manual Definitivo", "Kit Turbo", "Desafio Relâmpago"];
+const LT_NAMES = ["Guia Prático", "Método Express", "Planner Completo", "Manual Definitivo", "Kit Turbo", "Desafio Relâmpago", "Protocolo", "Fórmula", "Blueprint", "Sistema"];
+const LT_MECH = ["em 3 passos", "com o método dos 15 minutos", "sem complicação", "do zero ao resultado", "no piloto automático", "com checklist diário"];
 
 $("#btnLtGenerate").addEventListener("click", () => {
   const niche = NICHES[+$("#ltNiche").value];
   const topic = $("#ltTopic").value.trim() || niche.kws[0];
   const format = $("#ltFormat").value;
-  const price = parseFloat($("#ltPrice").value);
+  const price = parseFloat($("#ltPrice").value) || 27;
   const priceFmt = BRL.format(price);
-  const offerName = `${pick(LT_NAMES)}: ${cap(topic)}`;
-  const bumpPrice = BRL.format(price <= 20 ? 7.9 : 9.9);
+  const anchor = BRL.format(price * 3);
+  const mech = pick(LT_MECH);
+  const offerName = `${pick(LT_NAMES)}: ${cap(topic)} ${mech}`;
+  const bumpPrice = BRL.format(price <= 20 ? 9.9 : 12.9);
   const upsellPrice = BRL.format(price <= 27 ? 67 : 97);
+  const downsell = BRL.format(Math.max(9.9, Math.round(price * 0.5)));
   const budget = Math.max(Math.round(price * 2), 30);
+  const cpaAlvo = BRL.format(price * 0.6);
+  const cpaLimite = BRL.format(price);
 
-  const offer = `📦 OFERTA\nNome: ${offerName}\nFormato: ${format}\nPreço: ${priceFmt}\nPromessa central: dominar "${topic}" de forma simples, mesmo começando do zero — com resultado visível na primeira semana.\nNicho: ${niche.name}`;
+  const offer = `📦 A OFERTA (com mecanismo único)\n• Nome: ${offerName}\n• Formato: ${format} · Preço: ${priceFmt} (âncora: "de ${anchor} por ${priceFmt}")\n• Público: quem quer ${topic} mas trava por falta de um passo a passo claro\n• Promessa central: sair do zero e ter o primeiro resultado em ${topic} JÁ na primeira semana — ${mech}\n• Mecanismo (o "como" diferente): um caminho enxuto que corta 80% do que não importa e entrega só o que gera resultado\n• Prova: antes/depois, prints ou o próprio material aberto no criativo`;
 
-  const adCopy = `Se você quer ${topic} mas não sabe por onde começar, isso aqui é pra você.\n\nO ${offerName} é um ${format.toLowerCase()} direto ao ponto: sem enrolação, sem teoria infinita — só o passo a passo que funciona.\n\n✅ Acesso imediato\n✅ Linguagem simples, pra aplicar hoje\n✅ Por menos que uma pizza: ${priceFmt}\n\n👉 Toque em "Saiba mais" e garanta o seu.`;
+  const adCopy = `[GANCHO] Você tenta ${topic} há meses e continua no mesmo lugar? O problema não é você — é falta de método.\n\n[AGITA] Vídeo solto, dica aqui e ali, e no fim sobra um monte de informação desconexa que não vira resultado. Cansa, né?\n\n[SOLUÇÃO] O ${offerName} é um ${format.toLowerCase()} direto ao ponto: o passo a passo ${mech}, pra aplicar hoje e ver resultado essa semana.\n\n✅ Acesso imediato (cai no seu e-mail em minutos)\n✅ Linguagem simples — feito pra quem começa do zero\n✅ Garantia de 7 dias: não gostou, devolvemos\n✅ Só ${priceFmt} (menos que uma pizza)\n\n👉 Toque em "Saiba mais" e comece ainda hoje.`;
 
-  const headlines = `1. ${cap(topic)}: o passo a passo completo por ${priceFmt}\n2. O ${format.toLowerCase()} que descomplica ${topic} de uma vez\n3. Comece ${topic} hoje — acesso imediato por ${priceFmt}`;
+  const headlines = `Teste estes 5 ângulos (1 por criativo):\n1. ${cap(topic)} ${mech}: o passo a passo completo por ${priceFmt}\n2. O erro nº 1 de quem tenta ${topic} sozinho (e como corrigir hoje)\n3. De ${anchor} por ${priceFmt}: ${topic} sem enrolação, com garantia\n4. Comece ${topic} hoje — acesso imediato, resultado essa semana\n5. ${cap(topic)} em 15 min/dia: o ${format.toLowerCase()} que descomplica de vez`;
 
-  const funnel = `🛒 FUNIL SUGERIDO\n1. Anúncio (Meta Ads) → página de vendas simples: promessa + 3 provas + preço + botão\n2. Checkout: order bump de ${bumpPrice} (complemento rápido: checklist, bônus, templates)\n3. Pós-compra: upsell de ${upsellPrice} (versão avançada, combo ou mentoria gravada)\n4. Página de obrigado: entrega imediata + convite pro grupo/lista\nMeta do funil: bump + upsell pagarem o tráfego; o produto principal vira o lucro.`;
+  const funnel = `🛒 FUNIL DE VALOR (maximiza o ticket médio)\n1. Anúncio → página de vendas curta: promessa + 3 provas + oferta + garantia + botão\n2. Order bump no checkout (${bumpPrice}): complemento rápido — checklist, templates ou planilha (aceite 30–40%)\n3. Upsell 1 clique (${upsellPrice}): versão avançada / combo / mentoria gravada (aceite 10–20%)\n4. Downsell (${downsell}): recusou o upsell? Ofereça uma versão light\n5. Página de obrigado: entrega imediata + convite pro grupo/lista (dispara o pixel de Compra)\n🎯 Meta: bump + upsell pagam o tráfego → o produto principal vira lucro.`;
 
-  const campaign = `🚀 ESTRUTURA DE CAMPANHA (Meta Ads)\nCampanha de vendas (CBO) — orçamento inicial R$ ${budget}/dia\nConjunto 1: público aberto (só país + idioma)\nConjunto 2: interesses ligados a "${niche.name}"\nConjunto 3: aberto com criativo em outro estilo (ex.: UGC)\n4 criativos por conjunto: 2 imagens (gere no 🎨 Estúdio) + 2 vídeos simples\nRegra dos 3 dias: CPA abaixo de ${BRL.format(price * 0.5)}? Escala 20%. Acima de ${BRL.format(price)}? Pausa o criativo.`;
+  const campaign = `🚀 CAMPANHA (Meta Ads)\n• Objetivo: Vendas · Otimização por Compra · CBO R$ ${budget}/dia\n• Conjunto 1: público aberto (só país + idioma + 18+) ← deixe o algoritmo achar\n• Conjunto 2: interesses ligados a "${niche.name}"\n• Conjunto 3: aberto com criativo em outro formato (ex.: UGC/depoimento)\n• 3–4 criativos por conjunto: misture imagem (🎨 Estúdio) + vídeo curto\n• Pixel obrigatório: ViewContent, InitiateCheckout, Purchase\n📏 Métricas-alvo: CPA até ${cpaAlvo} (bom) · corte acima de ${cpaLimite} · ROAS mínimo 1,8× no low ticket`;
 
-  const utm = `🎯 UTM PRONTA (cole no campo "Parâmetros de URL" do anúncio)\n${MACROS.meta.suffix}`;
+  const scaleRules = `📈 REGRAS DE ESCALA (decida sem achismo)\n• Espere 3 dias antes de julgar um criativo\n• CPA abaixo de ${cpaAlvo}? Suba o orçamento 20% (nunca dobre de uma vez)\n• CPA acima de ${cpaLimite}? Pause o criativo/conjunto\n• Criativo vencedor: duplique num conjunto novo e teste lookalike de quem comprou\n• Antes de subir, simule o ganho no 📈 Simulador de Escala com os números reais da campanha`;
 
-  const checklist = `✅ CHECKLIST DE EXECUÇÃO\n1. Validar demanda no 🔥 Explorador de Ofertas (10+ anúncios ativos do tema = demanda real)\n2. Criar o produto (${format.toLowerCase()}) focado em UMA transformação\n3. Passar a copy no 🚦 Verificador de Palavras Sensíveis\n4. Conferir títulos no 🔢 Contador de Caracteres\n5. Gerar criativos no 🎨 Estúdio + variações no ✍️ Gerador de Headlines\n6. Colar a UTM dinâmica no anúncio\n7. Acompanhar vendas e ROAS no 💰 Rastreador (conectado ao Meta) → escalar o criativo vencedor`;
+  const utm = `🎯 UTM PRONTA (cole em "Parâmetros de URL" do anúncio)\n${MACROS.meta.suffix}`;
+
+  const checklist = `✅ CHECKLIST DE EXECUÇÃO\n1. Validar demanda no 🔥 Explorador de Ofertas (10+ anúncios ativos = demanda real)\n2. Criar o produto (${format.toLowerCase()}) focado em UMA transformação\n3. Escrever a página com a copy acima; passar no 🚦 Palavras Sensíveis\n4. Conferir títulos no 🔢 Contador de Caracteres\n5. Gerar criativos no 🎨 Estúdio + variações no ✍️ Headlines\n6. Instalar o pixel e fazer uma compra teste no checkout\n7. Colar a UTM dinâmica no anúncio\n8. Subir com ${budget}/dia → acompanhar no 💰 Rastreador → escalar o vencedor`;
 
   $("#ltOut").innerHTML = [
     [offer, "1 · A oferta"],
-    [adCopy, "2 · Copy do anúncio"],
-    [headlines, "3 · Headlines pra testar"],
-    [funnel, "4 · Funil"],
+    [adCopy, "2 · Copy do anúncio (Gancho-Agita-Solução)"],
+    [headlines, "3 · 5 ângulos de headline"],
+    [funnel, "4 · Funil de valor"],
     [campaign, "5 · Campanha"],
-    [utm, "6 · Rastreamento"],
-    [checklist, "7 · Checklist de execução"],
+    [scaleRules, "6 · Regras de escala"],
+    [utm, "7 · Rastreamento"],
+    [checklist, "8 · Checklist de execução"],
   ]
     .map(([t, tag], i) => outItem(t, tag, i))
     .join("");
-  toast("Plano low ticket montado 🧭");
+  toast("Plano low ticket turbinado 🧭");
 });

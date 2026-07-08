@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/app.css" />
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 </head>
 <body class="app-body auth-locked">
 
@@ -67,7 +68,7 @@
         <p class="auth-error" id="regError"></p>
       </form>
 
-      <p class="hint" style="text-align:center;margin-top:14px">Conta grátis libera as ferramentas básicas. O plano <strong>Pro (R$ 40/mês via PIX)</strong> desbloqueia tudo. 🔒 Contas e dados ficam salvos neste navegador.</p>
+      <p class="hint" style="text-align:center;margin-top:14px">A conta grátis libera muita ferramenta (até ~15 usos a cada 5h). <strong>Pro R$ 40</strong> abre Explorador, Biblioteca e Modelar (até ~70 usos/5h); <strong>Max R$ 130</strong> é ilimitado — tudo via PIX. 🔒 Contas e dados ficam salvos neste navegador.</p>
     </div>
   </div>
 
@@ -84,7 +85,7 @@
       </svg>
       Pulsar<span class="grad-text">Ads</span>
     </a>
-    <span class="topbar-badge">dados no seu navegador · Pro R$ 40/mês</span>
+    <span class="topbar-badge">dados no seu navegador · Pro R$ 40 · Max R$ 130</span>
     <a href="index.html" class="btn btn-ghost btn-sm topbar-back">← Voltar ao site</a>
   </header>
 
@@ -121,6 +122,7 @@
         <a href="#ocr" class="side-link" data-tool="ocr"><span class="si">🖼️</span> Imagem → Texto <span class="side-new">novo</span></a>
         <a href="#metadados" class="side-link" data-tool="metadados"><span class="si">🧹</span> Limpador de Metadados</a>
       </nav>
+      <div class="token-meter" id="tokenMeter" hidden></div>
       <div class="side-foot">
         <a href="https://github.com/muhehehe123514-ux/pulsarads" target="_blank" rel="noopener">⭐ Código no GitHub</a>
       </div>
@@ -255,7 +257,14 @@
       <section class="panel" id="tool-escala">
         <div class="panel-head">
           <h2>📈 Simulador de Escala</h2>
-          <p>Projete o que acontece com cliques, vendas e ROAS ao multiplicar o orçamento — incluindo a perda de eficiência típica da escala.</p>
+          <p>Projete o que acontece com cliques, vendas e ROAS ao multiplicar o orçamento — incluindo a perda de eficiência típica da escala. Conecte o Meta Ads pra simular com os números reais das suas campanhas.</p>
+        </div>
+        <div class="card" id="scLiveCard">
+          <div class="card-head-row">
+            <h3>🔗 Simular com minhas campanhas ao vivo</h3>
+            <button class="btn btn-ghost btn-sm" id="btnScSync">↻ Atualizar do Meta</button>
+          </div>
+          <div id="scLive"></div>
         </div>
         <div class="card">
           <div class="form-grid">
@@ -395,6 +404,30 @@
             <canvas id="crCanvas" width="1080" height="1080"></canvas>
           </div>
         </div>
+        <div class="card" id="crAiCard">
+          <div class="card-head-row">
+            <h3>🤖 Gerar criativo com IA (grátis)</h3>
+          </div>
+          <p class="hint" style="margin-bottom:14px">Monte o prompt automaticamente a partir de uma oferta modelada (ou escreva o seu), revise, e abra direto na IA de imagem — você usa sua própria conta, logada no navegador. Tudo grátis.</p>
+          <div class="form-grid">
+            <label>Base do prompt
+              <select id="crAiOffer"><option value="">— prompt livre —</option></select>
+            </label>
+            <div class="form-actions" style="align-self:end">
+              <button type="button" class="btn btn-ghost btn-sm" id="btnCrAiBuild">✨ Montar prompt</button>
+            </div>
+          </div>
+          <label class="lbl-block" style="margin-top:10px">Prompt (edite à vontade)
+            <textarea id="crAiPrompt" rows="4" placeholder="Descreva o criativo: produto, estilo, cores, texto na imagem, formato…"></textarea>
+          </label>
+          <div class="ai-launch">
+            <button type="button" class="ai-btn" data-ai="gemini">✦ Gemini / Nano Banana</button>
+            <button type="button" class="ai-btn" data-ai="chatgpt">⬡ ChatGPT (DALL·E)</button>
+            <button type="button" class="ai-btn" data-ai="copilot">◑ Copilot Designer</button>
+            <button type="button" class="ai-btn" data-ai="leonardo">◆ Leonardo.ai</button>
+          </div>
+          <p class="hint">O prompt é copiado automaticamente e a IA abre em nova aba — é só colar (Ctrl+V) e gerar. Gemini e Copilot Designer têm geração de imagem gratuita generosa; Leonardo dá créditos diários grátis.</p>
+        </div>
         <div class="card">
           <div class="card-head-row">
             <h3>🖼️ Minha galeria de imagens</h3>
@@ -420,7 +453,7 @@
         <div class="card">
           <label class="dropzone" id="ocrDrop">
             <input type="file" id="ocrFile" accept="image/*" hidden />
-            <span id="ocrDropText">📷 Clique ou arraste a imagem com texto aqui</span>
+            <span id="ocrDropText">📷 Clique, arraste, ou copie uma imagem e cole com <kbd>Ctrl</kbd>+<kbd>V</kbd></span>
           </label>
           <div class="meta-info" id="ocrPreview" hidden></div>
           <div class="form-actions">
@@ -489,8 +522,39 @@
               <button class="btn btn-primary btn-sm" id="btnMdPublish">🌐 Publicar no Netlify</button>
             </div>
           </div>
-          <p class="hint" style="margin-bottom:12px">✏️ Com a edição ligada, clique em qualquer texto da página pra reescrever. Arraste imagens do navegador direto pros espaços de foto. Tudo é salvo no HTML final.</p>
-          <div class="page-frame"><iframe id="mdFrame" title="Preview da página de vendas"></iframe></div>
+
+          <!-- estilo: paleta + fontes -->
+          <div class="md-style-bar">
+            <label>🎨 Paleta <select id="mdPalette"></select></label>
+            <label>🔠 Fonte dos títulos <select id="mdFontHead"></select></label>
+            <label>🔡 Fonte do texto <select id="mdFontBody"></select></label>
+            <label>🔗 Link dos botões (checkout)
+              <input type="url" id="mdCheckout" placeholder="https://seu-checkout.com/…" />
+            </label>
+          </div>
+
+          <!-- adicionar seções -->
+          <div class="md-add-bar">
+            <span class="mab-label">➕ Adicionar:</span>
+            <button class="chip-btn" data-md-add="carousel">Carrossel</button>
+            <button class="chip-btn" data-md-add="banner">Banner</button>
+            <button class="chip-btn" data-md-add="image">Imagem</button>
+            <button class="chip-btn" data-md-add="heading">Título</button>
+            <button class="chip-btn" data-md-add="text">Texto extenso</button>
+            <button class="chip-btn" data-md-add="testimonials">Depoimentos</button>
+            <button class="chip-btn" data-md-add="cta">Botão de compra</button>
+          </div>
+
+          <!-- dispositivo do preview -->
+          <div class="md-device-bar">
+            <span class="mab-label">👁 Ver em:</span>
+            <button class="chip-btn active" data-md-dev="desktop">🖥️ Desktop</button>
+            <button class="chip-btn" data-md-dev="tablet">📱 Tablet</button>
+            <button class="chip-btn" data-md-dev="mobile">📲 Celular</button>
+          </div>
+
+          <p class="hint" style="margin:4px 0 12px">✏️ Com a edição ligada: clique em qualquer <strong>texto</strong> pra reescrever; clique numa <strong>imagem vazia</strong> pra enviar do seu aparelho/galeria; passe o mouse pra ver o puxador <strong>⠿ (segure e arraste pra reposicionar)</strong>, ou use ↑↓/✕ pra mover e remover seções; clique num <strong>botão</strong> pra definir o link de checkout. Tudo é salvo no HTML final.</p>
+          <div class="page-frame" id="mdFrameWrap" data-dev="desktop"><iframe id="mdFrame" title="Preview da página de vendas"></iframe></div>
           <div id="mdPublishOut" style="margin-top:14px"></div>
         </div>
       </section>
@@ -498,15 +562,15 @@
       <!-- ===== ÁUDIO ===== -->
       <section class="panel" id="tool-audio">
         <div class="panel-head">
-          <h2>🔊 Gerador de Áudio</h2>
-          <p>Transforme sua copy em narração usando as vozes nativas do seu navegador e sistema — sem custo de API.</p>
+          <h2>🔊 Gerador de Áudio (voz neural)</h2>
+          <p>Transforme sua copy em narração com as <strong>vozes neurais/naturais em português</strong> — as mais realistas disponíveis no seu navegador.</p>
         </div>
         <div class="card">
           <label class="lbl-block">Texto pra narrar
             <textarea id="ttsInput" rows="5" placeholder="Cole aqui a copy que você quer ouvir narrada…"></textarea>
           </label>
           <div class="form-grid">
-            <label>Voz <select id="ttsVoice"></select></label>
+            <label>Voz neural <select id="ttsVoice"></select></label>
             <label>Velocidade <input type="range" id="ttsRate" min="0.5" max="2" step="0.1" value="1" /><span class="hint" id="ttsRateLbl">1.0x</span></label>
             <label>Tom <input type="range" id="ttsPitch" min="0.5" max="1.5" step="0.1" value="1" /><span class="hint" id="ttsPitchLbl">1.0</span></label>
           </div>
@@ -514,7 +578,7 @@
             <button class="btn btn-primary btn-sm" id="btnTtsPlay">▶ Reproduzir</button>
             <button class="btn btn-ghost btn-sm" id="btnTtsStop">⏹ Parar</button>
           </div>
-          <p class="hint">Dica: no Windows e no Chrome há vozes em português (Maria, Daniel, Google português do Brasil…). Pra gravar o áudio, use o gravador do sistema enquanto reproduz.</p>
+          <p class="hint" id="ttsHint">Mostramos só as vozes neurais em português (as naturais, tipo "Google português do Brasil", "Microsoft Thalita/Francisca Online (Natural)"). Pra gravar, use o gravador do sistema enquanto reproduz.</p>
         </div>
       </section>
 
@@ -561,9 +625,18 @@
           <p>Área exclusiva do dono: gere códigos de ativação Pro pra quem pagou o PIX e gerencie as contas deste navegador.</p>
         </div>
         <div class="card">
-          <h3>Gerar código de ativação Pro</h3>
+          <h3>Gerar código de ativação (sorteio / cortesia)</h3>
           <div class="form-grid">
-            <label>Usuário do comprador <input type="text" id="admUser" placeholder="usuário exato de quem pagou" /></label>
+            <label>Usuário do comprador <input type="text" id="admUser" placeholder="usuário exato de quem vai ativar" /></label>
+            <label>Plano
+              <select id="admPlan">
+                <option value="pro">⚡ Pro</option>
+                <option value="max">🚀 Max</option>
+              </select>
+            </label>
+            <label>Duração
+              <select id="admDur"></select>
+            </label>
             <label>Mês de referência
               <select id="admMonth"></select>
             </label>
@@ -572,7 +645,7 @@
             </div>
           </div>
           <div class="utm-result" id="admCodeOut" hidden></div>
-          <p class="hint">Fluxo: a pessoa paga o PIX de R$ 40 → te envia o comprovante + o usuário dela → você gera o código aqui e envia de volta → ela ativa na tela da ferramenta bloqueada. O código funciona em qualquer dispositivo (validação matemática, sem servidor) e libera 31 dias.</p>
+          <p class="hint">Escolha o plano, por quanto tempo vale (ou ♾️ vitalício) e gere o código — envie pra pessoa ativar na tela de planos. O código embute plano + duração e funciona em qualquer dispositivo (validação matemática, sem servidor). Na tabela abaixo você também dá/estende planos e <strong>revoga</strong> o acesso a qualquer momento.</p>
         </div>
         <div class="card">
           <h3>Contas neste navegador</h3>
@@ -776,7 +849,6 @@
             <h3>Filtros</h3>
             <div class="form-actions" style="margin:0">
               <button class="btn btn-primary btn-sm" id="btnLibNew">➕ Nova oferta</button>
-              <button class="btn btn-ghost btn-sm" id="btnLibSample">Carregar exemplo</button>
               <button class="btn btn-ghost btn-sm" id="btnLibExport">Exportar JSON</button>
             </div>
           </div>
@@ -977,5 +1049,6 @@
   <script src="js/ocr.js"></script>
   <script src="js/modelar.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/tokens.js"></script>
 </body>
 </html>
