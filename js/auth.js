@@ -259,10 +259,11 @@ function planCardsHtml() {
         <div class="pc-head"><span class="pc-name">${p.emoji} ${p.label}</span>
           <span class="pc-price">R$ ${p.price},00<small>/mês</small></span></div>
         <ul class="pc-bullets">${p.bullets.map((b) => `<li>${b}</li>`).join("")}</ul>
+        ${window.PULSAR_BACKEND ? `<button class="btn btn-primary btn-sm pc-mp" data-mp-pay="${key}">💳 Pagar com Mercado Pago (libera na hora)</button>` : ""}
         <div class="pix-qr" data-pix-qr="${payload}" aria-label="QR Code PIX do plano ${p.label}"></div>
         <div class="pix-row">
           <input type="text" readonly value="${payload}" onclick="this.select()" />
-          <button class="btn btn-primary btn-sm" data-pix-copy="${key}">Copiar 💠</button>
+          <button class="btn btn-ghost btn-sm" data-pix-copy="${key}">Copiar PIX 💠</button>
         </div>
       </div>`;
     }).join("")}
@@ -271,7 +272,9 @@ function planCardsHtml() {
     <input type="text" placeholder="Código de ativação (XXXX-XXXX-…)" data-code-input maxlength="16" />
     <button class="btn btn-ghost btn-sm" data-code-activate>Ativar 🔓</button>
   </div>
-  <p class="hint" style="margin-top:8px">Escaneie o QR (ou copie o PIX) no app do seu banco → após a confirmação do pagamento seu código de ativação é liberado → cole aqui e pronto. Chave PIX: CPF ${PIX_KEY}.</p>`;
+  <p class="hint" style="margin-top:8px">${window.PULSAR_BACKEND
+    ? "💳 Mercado Pago libera automaticamente assim que o pagamento é aprovado. Prefere PIX manual? Escaneie o QR / copie o código e ative aqui embaixo."
+    : "Escaneie o QR (ou copie o PIX) no app do seu banco → após a confirmação do pagamento seu código de ativação é liberado → cole aqui e pronto."} Chave PIX: CPF ${PIX_KEY}.</p>`;
 }
 
 function paywallHtml() {

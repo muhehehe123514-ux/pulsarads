@@ -1007,6 +1007,85 @@ $$(".ai-btn[data-ai]").forEach((btn) => {
   });
 });
 
+// ---------- Gerador de imagem EMBUTIDO (grátis, sem login) ----------
+// usa a API pública do Pollinations (Flux); a imagem aparece direto no site
+function pollUrl(prompt, seed, story) {
+  const w = story ? 1024 : 1024;
+  const h = story ? 1820 : 1024;
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&model=flux&seed=${seed}`;
+}
+
+$("#btnCrAiGen")?.addEventListener("click", () => {
+  let prompt = $("#crAiPrompt").value.trim();
+  if (!prompt) { prompt = buildAiPrompt(); $("#crAiPrompt").value = prompt; }
+  if (!window.canUse()) return;
+  const n = +($("#crAiCount")?.value || 1);
+  const story = $("#crFormat").value === "story";
+  const box = $("#crAiResults");
+  box.innerHTML = "";
+  const btn = $("#btnCrAiGen");
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = "🎨 Gerando…";
+  let charged = false, done = 0;
+  const finish = () => { if (++done >= n) { btn.disabled = false; btn.textContent = label; } };
+
+  for (let i = 0; i < n; i++) {
+    const seed = Math.floor(Math.random() * 1e6);
+    const url = pollUrl(prompt, seed, story);
+    const card = document.createElement("div");
+    card.className = "ai-result";
+    card.innerHTML = `<div class="ai-result-img"><span class="ai-spin">🎨 gerando…</span></div>`;
+    box.appendChild(card);
+    const holder = card.querySelector(".ai-result-img");
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // Pollinations envia CORS *, então fica limpo pro canvas/baixar
+    img.alt = "criativo gerado por IA";
+    img.onload = () => {
+      holder.innerHTML = "";
+      holder.appendChild(img);
+      card.insertAdjacentHTML("beforeend",
+        `<div class="ai-result-actions">
+          <button class="btn btn-primary btn-sm" data-ai-dl>⬇ Baixar</button>
+          <button class="btn btn-ghost btn-sm" data-ai-use>Usar no criativo</button>
+        </div>`);
+      card.dataset.url = url;
+      if (!charged) { charged = true; window.spendUse(); }
+      finish();
+    };
+    img.onerror = () => {
+      holder.innerHTML = `<span class="ai-spin">❌ falhou — clique de novo</span>`;
+      finish();
+    };
+    img.src = url;
+  }
+  box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+});
+
+// baixar / usar o criativo gerado
+$("#crAiResults")?.addEventListener("click", async (e) => {
+  const card = e.target.closest(".ai-result");
+  if (!card) return;
+  const img = card.querySelector("img");
+  if (e.target.closest("[data-ai-dl]") && img) {
+    try {
+      const r = await fetch(card.dataset.url);
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `pulsarads-ia-${Date.now()}.jpg`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast("Criativo baixado 🎨");
+    } catch {
+      window.open(card.dataset.url, "_blank", "noopener");
+    }
+  }
+  if (e.target.closest("[data-ai-use]") && img && window.setStudioImageUrl) {
+    window.setStudioImageUrl(img.src);
+  }
+});
+
 // ---------- Criador de prompt de ANIMAÇÃO (vídeo) nível prêmio ----------
 const AI_VID_TARGETS = {
   runway: { name: "Runway", url: "https://app.runwayml.com/" },

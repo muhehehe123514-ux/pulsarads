@@ -203,6 +203,22 @@ window.setStudioImage = (id) => {
 };
 window.getStudioImage = () => studioImg?.el || null;
 
+// usa uma imagem por URL (ex.: criativo gerado por IA) como imagem do produto no canvas
+window.setStudioImageUrl = (url) => {
+  const el = new Image();
+  el.crossOrigin = "anonymous"; // mantém o canvas "limpo" pra exportar PNG
+  el.onload = () => {
+    studioImg = { id: "ia", el };
+    $("#btnCrClearImg").hidden = false;
+    $("#crImgHint").textContent = "Usando: criativo gerado por IA";
+    if (window.renderCreativeStudio) window.renderCreativeStudio();
+    toast("Criativo aplicado no Estúdio 🎨");
+    location.hash = "#criativo";
+  };
+  el.onerror = () => toast("Não consegui carregar essa imagem 😕");
+  el.src = url;
+};
+
 $("#btnCrPickImg").addEventListener("click", () => window.pickImage((id) => window.setStudioImage(id)));
 $("#btnCrClearImg").addEventListener("click", () => {
   studioImg = null;

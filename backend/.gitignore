@@ -1,0 +1,4 @@
+node_modules/
+grants.json
+.env
+*.log

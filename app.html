@@ -456,14 +456,22 @@
           <label class="lbl-block" style="margin-top:10px">Prompt profissional (edite à vontade)
             <textarea id="crAiPrompt" rows="5" placeholder="Clique em ✨ Criar prompt profissional — ou escreva o seu aqui."></textarea>
           </label>
-          <p class="hint" style="margin:6px 0">Escolha a IA (abre na sua conta logada, no seu navegador — o prompt é copiado automaticamente):</p>
-          <div class="ai-launch">
-            <button type="button" class="ai-btn" data-ai="gemini">✦ Gemini <span class="ai-lim">grátis · ~100 img/dia</span></button>
-            <button type="button" class="ai-btn" data-ai="chatgpt">⬡ ChatGPT / DALL·E <span class="ai-lim">grátis · ~2–3 img/dia</span></button>
-            <button type="button" class="ai-btn" data-ai="copilot">◑ Copilot Designer <span class="ai-lim">grátis · 15 boosts/dia</span></button>
-            <button type="button" class="ai-btn" data-ai="leonardo">◆ Leonardo.ai <span class="ai-lim">grátis · ~150 créditos/dia</span></button>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" id="btnCrAiGen">🎨 Gerar criativo grátis (aparece aqui)</button>
           </div>
-          <p class="hint" id="crAiNote">Os limites acima são das contas gratuitas de cada IA (mudam conforme a plataforma). Se você escolheu mais de 1 criativo, cole o prompt e gere quantas variações quiser.</p>
+          <p class="hint">Gera direto no site, sem login e sem sair — em segundos o criativo aparece embaixo. É grátis e ilimitado (conta como 1 uso por geração).</p>
+          <div class="ai-results" id="crAiResults"></div>
+
+          <details class="ai-external">
+            <summary>Prefere gerar na sua conta do ChatGPT/Gemini/Copilot/Leonardo?</summary>
+            <p class="hint" style="margin:8px 0">Abre a IA em nova aba com o prompt já copiado (cole com Ctrl+V). Limites das contas gratuitas de cada uma:</p>
+            <div class="ai-launch">
+              <button type="button" class="ai-btn" data-ai="gemini">✦ Gemini <span class="ai-lim">grátis · ~100 img/dia</span></button>
+              <button type="button" class="ai-btn" data-ai="chatgpt">⬡ ChatGPT / DALL·E <span class="ai-lim">grátis · ~2–3 img/dia</span></button>
+              <button type="button" class="ai-btn" data-ai="copilot">◑ Copilot Designer <span class="ai-lim">grátis · 15 boosts/dia</span></button>
+              <button type="button" class="ai-btn" data-ai="leonardo">◆ Leonardo.ai <span class="ai-lim">grátis · ~150 créditos/dia</span></button>
+            </div>
+          </details>
         </div>
         <div class="card">
           <div class="card-head-row">
@@ -1089,6 +1097,7 @@
   <div class="toast" id="toast"></div>
   <div class="viz-tooltip" id="vizTooltip" hidden></div>
 
+  <script src="js/config.js"></script>
   <script src="js/app.js"></script>
   <script src="js/images.js"></script>
   <script src="js/tools2.js"></script>
@@ -1098,5 +1107,6 @@
   <script src="js/modelar.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/tokens.js"></script>
+  <script src="js/payments.js"></script>
 </body>
 </html>

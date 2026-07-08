@@ -901,6 +901,7 @@ body.auth-locked .app-shell, body.auth-locked .app-topbar { visibility: hidden; 
   border-radius: 12px;
 }
 .pix-qr svg { width: 100%; height: 100%; display: block; }
+.pc-mp { width: 100%; justify-content: center; margin-bottom: 4px; }
 
 /* modal genérico (planos, escolha de imagem) */
 .modal-backdrop {
@@ -968,6 +969,19 @@ body.auth-locked .app-shell, body.auth-locked .app-topbar { visibility: hidden; 
   border-top: 1px dashed var(--border);
 }
 .ai-anim > strong { font-size: 14px; }
+
+/* resultados do gerador de imagem embutido */
+.ai-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin: 8px 0 4px; }
+.ai-result { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: rgba(0, 0, 0, 0.25); }
+.ai-result-img { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.03); }
+.ai-result-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ai-spin { color: var(--muted); font-size: 13px; animation: aiPulse 1.2s ease-in-out infinite; }
+@keyframes aiPulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+.ai-result-actions { display: flex; gap: 6px; padding: 8px; }
+.ai-result-actions .btn { flex: 1; justify-content: center; }
+.ai-external { margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 10px; }
+.ai-external summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--text-2); }
+.ai-external summary:hover { color: var(--text); }
 
 /* ---------- Modelar v2: barras de estilo / seções / device ---------- */
 .md-style-bar, .md-add-bar, .md-device-bar {
