@@ -172,242 +172,61 @@ renderOpSaved();
 // ============================================================
 // 16) RASTREADOR DE VENDAS (atribuição local estilo Utmify)
 // ============================================================
-const SALES_KEY = "pulsar_sales";
-const loadSales = () => JSON.parse(localStorage.getItem(SALES_KEY) || "[]");
-const saveSales = (s) => localStorage.setItem(SALES_KEY, JSON.stringify(s));
-
-const SAMPLE_SALES = [
-  { date: "2026-07-05", product: "Ebook Receitas Fit", value: 27, campaign: "CBO Escala — Oferta A", content: "criativo-01" },
-  { date: "2026-07-05", product: "Ebook Receitas Fit", value: 27, campaign: "CBO Escala — Oferta A", content: "criativo-03" },
-  { date: "2026-07-05", product: "Order bump — Cardápio", value: 9.9, campaign: "CBO Escala — Oferta A", content: "criativo-03" },
-  { date: "2026-07-06", product: "Ebook Receitas Fit", value: 27, campaign: "CBO Escala — Oferta A", content: "criativo-03" },
-  { date: "2026-07-06", product: "Curso Marmitas", value: 47, campaign: "Pesquisa fundo de funil", content: "anuncio-busca-02" },
-  { date: "2026-07-06", product: "Ebook Receitas Fit", value: 27, campaign: "Spark Ads — vídeo 03", content: "video-03" },
-  { date: "2026-07-07", product: "Upsell Mentoria Express", value: 97, campaign: "Remarketing 7 dias", content: "carrossel-01" },
-  { date: "2026-07-07", product: "Ebook Receitas Fit", value: 27, campaign: "CBO Escala — Oferta A", content: "criativo-01" },
-];
-
-function groupBy(arr, keyFn) {
-  const map = new Map();
-  arr.forEach((item) => {
-    const k = keyFn(item) || "(sem atribuição)";
-    if (!map.has(k)) map.set(k, []);
-    map.get(k).push(item);
-  });
-  return map;
-}
-
-function renderVendas() {
-  const sales = loadSales();
-  const camps = loadCamps();
-  const totRev = sales.reduce((s, v) => s + v.value, 0);
-  const totInvest = camps.reduce((s, c) => s + c.invest, 0);
-  $("#slRevenue").textContent = BRL.format(totRev);
-  $("#slCount").textContent = sales.length;
-  $("#slTicket").textContent = sales.length ? BRL.format(totRev / sales.length) : "—";
-  $("#slRoas").textContent = totInvest > 0 && sales.length ? (totRev / totInvest).toFixed(2) + "x" : "—";
-  $("#slRoasNote").textContent = totInvest > 0 ? "receita rastreada ÷ investido no painel" : "adicione investimento no 📊 Painel";
-
-  // datalist com as campanhas do painel
-  $("#campNames").innerHTML = camps.map((c) => `<option value="${escHtml(c.name)}"></option>`).join("");
-
-  // atribuição por campanha
-  const byCamp = [...groupBy(sales, (s) => s.campaign).entries()]
-    .map(([name, list]) => ({ name, count: list.length, revenue: list.reduce((a, b) => a + b.value, 0) }))
-    .sort((a, b) => b.revenue - a.revenue);
-
-  $("#attrCampTable tbody").innerHTML = byCamp.length
-    ? byCamp
-        .map((g) => {
-          const camp = camps.find((c) => c.name.trim().toLowerCase() === g.name.trim().toLowerCase());
-          const invest = camp ? camp.invest : null;
-          const roas = invest > 0 ? (g.revenue / invest).toFixed(2) + "x" : "—";
-          const cpa = invest > 0 ? BRL.format(invest / g.count) : "—";
-          return `<tr><td>${escHtml(g.name)}</td><td>${g.count}</td><td>${BRL.format(g.revenue)}</td>
-            <td>${totRev ? ((g.revenue / totRev) * 100).toFixed(1) : 0}%</td>
-            <td>${invest != null ? BRL.format(invest) : "—"}</td>
-            <td class="${invest > 0 && g.revenue >= invest ? "pos" : ""}">${roas}</td><td>${cpa}</td></tr>`;
-        })
-        .join("")
-    : `<tr><td colspan="7" style="text-align:center;color:var(--muted)">Nenhuma venda ainda.</td></tr>`;
-
-  // atribuição por criativo
-  const byContent = [...groupBy(sales, (s) => s.content).entries()]
-    .map(([name, list]) => ({ name, count: list.length, revenue: list.reduce((a, b) => a + b.value, 0) }))
-    .sort((a, b) => b.revenue - a.revenue);
-  $("#attrContentTable tbody").innerHTML = byContent.length
-    ? byContent
-        .map(
-          (g) => `<tr><td>${escHtml(g.name)}</td><td>${g.count}</td><td>${BRL.format(g.revenue)}</td>
-          <td>${totRev ? ((g.revenue / totRev) * 100).toFixed(1) : 0}%</td></tr>`
-        )
-        .join("")
-    : `<tr><td colspan="4" style="text-align:center;color:var(--muted)">Nenhuma venda ainda.</td></tr>`;
-
-  // últimas vendas
-  $("#salesTable tbody").innerHTML = sales.length
-    ? sales
-        .map((s, i) => ({ ...s, i }))
-        .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
-        .slice(0, 30)
-        .map(
-          (s) => `<tr><td>${s.date ? s.date.split("-").reverse().join("/") : "—"}</td>
-          <td>${escHtml(s.product)}</td><td>${BRL.format(s.value)}</td>
-          <td>${escHtml(s.campaign || "—")}</td><td>${escHtml(s.content || "—")}</td>
-          <td><button class="row-del" data-sale="${s.i}" title="Excluir">✕</button></td></tr>`
-        )
-        .join("")
-    : `<tr><td colspan="6" style="text-align:center;color:var(--muted)">Nenhuma venda ainda.</td></tr>`;
-
-  renderSalesChart(byCamp, totRev);
-}
-
-function renderSalesChart(byCamp, totRev) {
-  const root = $("#salesChart");
-  if (!byCamp.length) {
-    root.innerHTML = `<div class="viz-empty">Registre vendas (ou carregue o exemplo) pra ver o gráfico.</div>`;
+function renderMetaAuto() {
+  const body = $("#metaAutoBody");
+  const snap = JSON.parse(localStorage.getItem("pulsar_meta_snapshot") || "null");
+  if (!snap || !snap.campaigns?.length) {
+    body.innerHTML = `<p class="hint">Conecte a conta do cliente em <a href="#meta" style="color:var(--cyan);font-weight:600">📡 Meta Ads ao vivo</a> — as vendas, o lucro e o ROAS passam a ser puxados automaticamente da API do Facebook e aparecem aqui.</p>`;
     return;
   }
-  const data = byCamp.slice(0, 8);
-  const W = 720, H = 280, mL = 64, mR = 12, mT = 26, mB = 46;
-  const iw = W - mL - mR, ih = H - mT - mB;
-  const max = Math.max(...data.map((d) => d.revenue), 1);
-  const pow = Math.pow(10, Math.floor(Math.log10(max)));
-  const niceMax = Math.ceil(max / pow) * pow;
-  const y = (v) => mT + ih - (v / niceMax) * ih;
+  const cur = snap.currency || "BRL";
+  const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: cur });
+  const t = snap.campaigns.reduce(
+    (a, c) => ({ spend: a.spend + (c.spend || 0), purch: a.purch + (c.purchases || 0), rev: a.rev + (c.revenue || 0) }),
+    { spend: 0, purch: 0, rev: 0 }
+  );
+  const lucro = t.rev - t.spend;
+  const when = new Date(snap.when);
+  const top = [...snap.campaigns].sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 6);
+  body.innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi-tile"><div class="kpi-lbl">Vendas</div><div class="kpi-val">${NUM.format(t.purch)}</div></div>
+      <div class="kpi-tile"><div class="kpi-lbl">Receita</div><div class="kpi-val">${money.format(t.rev)}</div></div>
+      <div class="kpi-tile"><div class="kpi-lbl">Gasto</div><div class="kpi-val">${money.format(t.spend)}</div></div>
+      <div class="kpi-tile"><div class="kpi-lbl">Lucro</div><div class="kpi-val" style="color:${lucro >= 0 ? "var(--good)" : "var(--bad)"}">${money.format(lucro)}</div></div>
+      <div class="kpi-tile"><div class="kpi-lbl">Ticket médio</div><div class="kpi-val">${t.purch ? money.format(t.rev / t.purch) : "—"}</div></div>
+      <div class="kpi-tile"><div class="kpi-lbl">ROAS</div><div class="kpi-val">${t.spend > 0 && t.rev ? (t.rev / t.spend).toFixed(2) + "x" : "—"}</div></div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Campanha</th><th>Vendas</th><th>Receita</th><th>Gasto</th><th>Lucro</th><th>ROAS</th></tr></thead>
+        <tbody>${top
+          .map((c) => {
+            const l = (c.revenue || 0) - (c.spend || 0);
+            return `<tr><td>${escHtml(c.name)}</td><td>${c.purchases || 0}</td><td>${money.format(c.revenue || 0)}</td>
+              <td>${money.format(c.spend || 0)}</td><td class="${l >= 0 ? "pos" : "neg"}">${money.format(l)}</td>
+              <td>${c.spend > 0 && c.revenue ? ((c.revenue / c.spend).toFixed(2)) + "x" : "—"}</td></tr>`;
+          })
+          .join("")}</tbody>
+      </table>
+    </div>
+    <p class="hint">Período: ${escHtml(snap.periodLabel)} · sincronizado ${when.toLocaleDateString("pt-BR")} às ${when.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · fonte: pixel da Meta (API oficial)</p>`;
+}
 
-  let grid = "";
-  for (let g = 0; g <= 4; g++) {
-    const gy = mT + (ih * g) / 4;
-    const val = niceMax * (1 - g / 4);
-    grid += `<line x1="${mL}" y1="${gy}" x2="${W - mR}" y2="${gy}" stroke="${g === 4 ? "var(--axis-line)" : "var(--grid-line)"}" stroke-width="${g === 4 ? 1.5 : 1}"/>`;
-    grid += `<text x="${mL - 10}" y="${gy + 4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="Inter,sans-serif">${val >= 1000 ? (val / 1000).toFixed(1) + "k" : Math.round(val)}</text>`;
+$("#btnMetaSync").addEventListener("click", async () => {
+  if (localStorage.getItem("pulsar_fb_token") && window.fbLoadCampaigns) {
+    toast("Sincronizando com o Facebook Ads… 📡");
+    await window.fbLoadCampaigns();
+    toast("Rastreador atualizado com dados do Meta ✅");
+  } else {
+    location.hash = "#meta";
+    toast("Conecte a conta do Facebook primeiro 📡");
   }
-  const groupW = iw / data.length;
-  const barW = Math.min(46, groupW * 0.5);
-  let bars = "", labels = "", hovers = "";
-  data.forEach((d, i) => {
-    const cx = mL + groupW * i + groupW / 2;
-    const by = y(d.revenue);
-    bars += `<path d="${roundedTopRect(cx - barW / 2, by, barW, ih - (by - mT), 4)}" fill="var(--series-2)"/>`;
-    bars += `<text x="${cx}" y="${by - 7}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text-2)" font-family="Inter,sans-serif">${d.revenue >= 1000 ? (d.revenue / 1000).toFixed(1) + "k" : Math.round(d.revenue)}</text>`;
-    const short = d.name.length > 13 ? d.name.slice(0, 12) + "…" : d.name;
-    labels += `<text x="${cx}" y="${H - mB + 20}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="Inter,sans-serif">${escHtml(short)}</text>`;
-    hovers += `<rect class="hv" data-i="${i}" x="${mL + groupW * i}" y="${mT}" width="${groupW}" height="${ih}" fill="transparent"/>`;
-  });
-  root.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Receita rastreada por campanha">${grid}${bars}${labels}${hovers}</svg>`;
-  root.querySelectorAll(".hv").forEach((r) => {
-    r.addEventListener("pointermove", (e) => {
-      const d = data[+r.dataset.i];
-      showTip(
-        `<strong>${escHtml(d.name)}</strong>
-         <span class="tt-row"><span class="lg-swatch" style="background:var(--series-2)"></span>Receita: ${BRL.format(d.revenue)}</span>
-         <span class="tt-row">${d.count} venda${d.count === 1 ? "" : "s"} · ${totRev ? ((d.revenue / totRev) * 100).toFixed(1) : 0}% do total</span>`,
-        e.clientX, e.clientY
-      );
-    });
-    r.addEventListener("pointerleave", hideTip);
-  });
+});
+
+function renderVendas() {
+  renderMetaAuto();
 }
-
-$("#saleForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const sales = loadSales();
-  sales.push({
-    date: $("#sDate").value || new Date().toISOString().slice(0, 10),
-    product: $("#sProduct").value.trim(),
-    value: parseFloat($("#sValue").value) || 0,
-    campaign: $("#sCampaign").value.trim(),
-    content: $("#sContent").value.trim(),
-  });
-  saveSales(sales);
-  e.target.reset();
-  renderVendas();
-  toast("Venda registrada 💰");
-});
-
-$("#salesTable").addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-sale]");
-  if (!btn) return;
-  const sales = loadSales();
-  sales.splice(+btn.dataset.sale, 1);
-  saveSales(sales);
-  renderVendas();
-});
-
-$("#btnSlSample").addEventListener("click", () => {
-  saveSales(SAMPLE_SALES);
-  renderVendas();
-  toast("Vendas de exemplo carregadas ✨ (combine com o exemplo do Painel!)");
-});
-
-$("#btnSlClear").addEventListener("click", () => {
-  if (!confirm("Apagar todas as vendas rastreadas? Essa ação não tem volta.")) return;
-  saveSales([]);
-  renderVendas();
-  toast("Rastreador limpo 🧹");
-});
-
-$("#btnSlExport").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify(loadSales(), null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "pulsarads-vendas.json";
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast("JSON exportado ⬇️");
-});
-
-function parseMoney(s) {
-  if (typeof s === "number") return s;
-  s = String(s).replace(/[^\d.,-]/g, "").trim();
-  if (!s) return 0;
-  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
-  return parseFloat(s) || 0;
-}
-
-const stripAccents = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
-
-$("#slCsv").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const lines = String(reader.result).trim().split(/\r?\n/).filter((l) => l.trim());
-    if (lines.length < 2) return toast("CSV vazio ou sem linhas de dados 😕");
-    const delim = (lines[0].match(/;/g) || []).length >= (lines[0].match(/,/g) || []).length ? ";" : ",";
-    const norm = (h) => stripAccents(h.toLowerCase()).replace(/^"|"$/g, "").trim();
-    const headers = lines[0].split(delim).map(norm);
-    const find = (...names) => headers.findIndex((h) => names.some((n) => h.includes(n)));
-    const iVal = find("valor", "value", "preco", "price", "amount", "total");
-    const iProd = find("produto", "product", "oferta", "item");
-    const iCamp = find("utm_campaign", "campanha", "campaign");
-    const iCont = find("utm_content", "criativo", "content", "anuncio");
-    const iDate = find("data", "date");
-    if (iVal < 0) return toast('CSV precisa de uma coluna de valor ("valor", "price"…) 😕');
-    const sales = loadSales();
-    let added = 0;
-    lines.slice(1).forEach((line) => {
-      const cols = line.split(delim).map((c) => c.replace(/^"|"$/g, "").trim());
-      const value = parseMoney(cols[iVal]);
-      if (!value) return;
-      sales.push({
-        date: iDate >= 0 && cols[iDate] ? cols[iDate].slice(0, 10) : new Date().toISOString().slice(0, 10),
-        product: iProd >= 0 ? cols[iProd] : "Importado",
-        value,
-        campaign: iCamp >= 0 ? cols[iCamp] : "",
-        content: iCont >= 0 ? cols[iCont] : "",
-      });
-      added++;
-    });
-    saveSales(sales);
-    renderVendas();
-    toast(`${added} vendas importadas do CSV 📥`);
-  };
-  reader.readAsText(file, "utf-8");
-  e.target.value = "";
-});
-
 renderVendas();
 
 // ============================================================
@@ -506,7 +325,7 @@ $("#btnLtGenerate").addEventListener("click", () => {
 
   const utm = `🎯 UTM PRONTA (cole no campo "Parâmetros de URL" do anúncio)\n${MACROS.meta.suffix}`;
 
-  const checklist = `✅ CHECKLIST DE EXECUÇÃO\n1. Validar demanda no 🔥 Explorador de Ofertas (10+ anúncios ativos do tema = demanda real)\n2. Criar o produto (${format.toLowerCase()}) focado em UMA transformação\n3. Passar a copy no 🚦 Verificador de Palavras Sensíveis\n4. Conferir títulos no 🔢 Contador de Caracteres\n5. Gerar criativos no 🎨 Estúdio + variações no ✍️ Gerador de Headlines\n6. Colar a UTM dinâmica no anúncio\n7. Registrar cada venda no 💰 Rastreador → escalar o criativo vencedor`;
+  const checklist = `✅ CHECKLIST DE EXECUÇÃO\n1. Validar demanda no 🔥 Explorador de Ofertas (10+ anúncios ativos do tema = demanda real)\n2. Criar o produto (${format.toLowerCase()}) focado em UMA transformação\n3. Passar a copy no 🚦 Verificador de Palavras Sensíveis\n4. Conferir títulos no 🔢 Contador de Caracteres\n5. Gerar criativos no 🎨 Estúdio + variações no ✍️ Gerador de Headlines\n6. Colar a UTM dinâmica no anúncio\n7. Acompanhar vendas e ROAS no 💰 Rastreador (conectado ao Meta) → escalar o criativo vencedor`;
 
   $("#ltOut").innerHTML = [
     [offer, "1 · A oferta"],

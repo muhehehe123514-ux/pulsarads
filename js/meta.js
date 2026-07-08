@@ -129,7 +129,7 @@ async function fbLoadCampaigns() {
     const res = await gGet(`/${accSel.value}/campaigns`, {
       fields:
         `name,status,effective_status,objective,daily_budget,lifetime_budget,` +
-        `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,actions,action_values,purchase_roas}`,
+        `insights.date_preset(${preset}){spend,impressions,clicks,inline_link_clicks,ctr,cpc,actions,action_values,purchase_roas}`,
       limit: "100",
     });
     fbCampaigns = (res.data || []).map((c) => {
@@ -150,15 +150,151 @@ async function fbLoadCampaigns() {
         cpc: parseFloat(ins.cpc) || 0,
         purchases,
         revenue,
-        roas: parseFloat(c.insights?.data?.[0]?.purchase_roas?.[0]?.value) || (ins.spend > 0 && revenue ? revenue / ins.spend : 0),
+        roas: parseFloat(ins.purchase_roas?.[0]?.value) || (ins.spend > 0 && revenue ? revenue / ins.spend : 0),
+        // etapas do funil de conversão (pixel)
+        linkClicks: parseInt(ins.inline_link_clicks) || pickAction(ins.actions, ["link_click"]),
+        lpv: pickAction(ins.actions, ["omni_landing_page_view", "landing_page_view"]),
+        ic: pickAction(ins.actions, ["omni_initiated_checkout", "initiate_checkout", "offsite_conversion.fb_pixel_initiate_checkout"]),
+        payInfo: pickAction(ins.actions, ["add_payment_info", "offsite_conversion.fb_pixel_add_payment_info"]),
       };
     });
+    saveMetaSnapshot(preset);
     renderFbDash();
+    renderFunnelSelect();
+    renderFunnel();
   } catch (err) {
     fbShowError(err);
   }
 }
+window.fbLoadCampaigns = fbLoadCampaigns;
 
+// ---------- snapshot pro Rastreador de Vendas (sincronização automática) ----------
+const META_SNAP_KEY = "pulsar_meta_snapshot";
+const PERIOD_LABEL = { today: "hoje", yesterday: "ontem", last_7d: "últimos 7 dias", last_30d: "últimos 30 dias", maximum: "período máximo" };
+
+function saveMetaSnapshot(preset) {
+  localStorage.setItem(
+    META_SNAP_KEY,
+    JSON.stringify({
+      when: new Date().toISOString(),
+      period: preset,
+      periodLabel: PERIOD_LABEL[preset] || preset,
+      currency: fbCurrency,
+      campaigns: fbCampaigns.map((c) => ({
+        name: c.name, spend: c.spend, purchases: c.purchases, revenue: c.revenue,
+        clicks: c.clicks, linkClicks: c.linkClicks, lpv: c.lpv, ic: c.ic, payInfo: c.payInfo,
+      })),
+    })
+  );
+  if (window.renderVendas) window.renderVendas();
+}
+
+// ---------- Funil de Conversão por campanha ----------
+const FUNNEL_STAGES = [
+  { key: "linkClicks", label: "Cliques" },
+  { key: "lpv", label: "Vis. Página" },
+  { key: "ic", label: "ICs" },
+  { key: "payInfo", label: "Info Pagto." },
+  { key: "purchases", label: "Compras" },
+];
+
+function renderFunnelSelect() {
+  const sel = $("#fnCampaign");
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML =
+    `<option value="-1">Todas as campanhas (somadas)</option>` +
+    fbCampaigns.map((c, i) => `<option value="${i}">${escHtml(c.name)}</option>`).join("");
+  if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
+}
+
+function renderFunnel() {
+  const root = $("#funnelChart");
+  if (!root) return;
+  if (!fbCampaigns.length) {
+    root.innerHTML = `<div class="viz-empty">Conecte a conta e carregue as campanhas pra ver o funil.</div>`;
+    return;
+  }
+  const sel = +($("#fnCampaign").value ?? -1);
+  const src =
+    sel >= 0
+      ? fbCampaigns[sel]
+      : fbCampaigns.reduce(
+          (t, c) => {
+            FUNNEL_STAGES.forEach((s) => (t[s.key] += c[s.key] || 0));
+            return t;
+          },
+          { linkClicks: 0, lpv: 0, ic: 0, payInfo: 0, purchases: 0 }
+        );
+
+  const values = FUNNEL_STAGES.map((s) => src[s.key] || 0);
+  const base = values[0];
+  if (!base) {
+    root.innerHTML = `<div class="viz-empty">Sem cliques registrados nesse período — o funil aparece quando houver tráfego.</div>`;
+    return;
+  }
+
+  const W = 760, H = 320, mT = 46, mB = 44, mX = 10;
+  const plotH = H - mT - mB;
+  const n = FUNNEL_STAGES.length;
+  const segW = (W - mX * 2) / n;
+  const trans = Math.min(38, segW * 0.28);
+  const midY = mT + plotH / 2;
+  const hOf = (v) => Math.max((v / base) * plotH, 8);
+
+  // caminho contínuo com transições suaves entre etapas
+  let top = "";
+  values.forEach((v, i) => {
+    const x0 = mX + segW * i, x1 = x0 + segW;
+    const y = midY - hOf(v) / 2;
+    top += i === 0 ? `M${x0},${y}` : "";
+    top += ` L${x1 - (i < n - 1 ? trans : 0)},${y}`;
+    if (i < n - 1) {
+      const yn = midY - hOf(values[i + 1]) / 2;
+      top += ` C${x1},${y} ${x1},${yn} ${x1 + trans},${yn}`;
+    }
+  });
+  let bottom = "";
+  for (let i = n - 1; i >= 0; i--) {
+    const x0 = mX + segW * i, x1 = x0 + segW;
+    const y = midY + hOf(values[i]) / 2;
+    bottom += ` L${x1},${y} L${x0 + (i > 0 ? trans : 0)},${y}`;
+    if (i > 0) {
+      const yp = midY + hOf(values[i - 1]) / 2;
+      bottom += ` C${x0},${y} ${x0},${yp} ${x0 - trans},${yp}`;
+    }
+  }
+
+  const seps = FUNNEL_STAGES.slice(1)
+    .map((_, i) => {
+      const x = mX + segW * (i + 1);
+      return `<line x1="${x}" y1="${mT - 26}" x2="${x}" y2="${H - mB + 8}" stroke="rgba(255,255,255,0.28)" stroke-width="1.5"/>`;
+    })
+    .join("");
+
+  const labels = FUNNEL_STAGES.map((s, i) => {
+    const cx = mX + segW * i + segW / 2;
+    const pct = ((values[i] / base) * 100).toFixed(1).replace(".", ",") + "%";
+    return `
+      <text x="${cx}" y="${mT - 28}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-2)" font-family="Inter,sans-serif">${s.label}</text>
+      <text x="${cx}" y="${midY + 6}" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff" font-family="Space Grotesk,Inter,sans-serif" stroke="rgba(0,0,0,0.35)" stroke-width="3" style="paint-order:stroke">${pct}</text>
+      <text x="${cx}" y="${H - 14}" text-anchor="middle" font-size="13" fill="var(--muted)" font-family="Inter,sans-serif">${NUM.format(values[i])}</text>`;
+  }).join("");
+
+  root.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Funil de conversão da campanha">
+    <defs>
+      <linearGradient id="fnGrad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#3987e5"/>
+        <stop offset="0.55" stop-color="#9085e9"/>
+        <stop offset="1" stop-color="#d55181"/>
+      </linearGradient>
+    </defs>
+    <path d="${top}${bottom} Z" fill="url(#fnGrad)" opacity="0.92"/>
+    ${seps}${labels}
+  </svg>`;
+}
+
+// ---------- dashboard ----------
 function renderFbDash() {
   const tot = fbCampaigns.reduce(
     (t, c) => ({
@@ -229,30 +365,8 @@ $("#fbTable").addEventListener("click", async (e) => {
   }
 });
 
-$("#btnFbImport").addEventListener("click", () => {
-  if (!fbCampaigns.length) return toast("Nada pra importar ainda 📡");
-  const camps = loadCamps();
-  let added = 0;
-  fbCampaigns.forEach((c) => {
-    if (!c.spend && !c.revenue) return;
-    const idx = camps.findIndex((k) => k.name === c.name && k.platform === "Meta Ads");
-    const row = {
-      name: c.name,
-      platform: "Meta Ads",
-      invest: +c.spend.toFixed(2),
-      revenue: +c.revenue.toFixed(2),
-      clicks: c.clicks,
-      impr: c.impressions,
-    };
-    if (idx >= 0) camps[idx] = row;
-    else camps.push(row);
-    added++;
-  });
-  saveCamps(camps);
-  renderPainel();
-  toast(`${added} campanhas importadas pro 📊 Painel local`);
-});
-
+// ---------- bindings ----------
+$("#fnCampaign").addEventListener("change", renderFunnel);
 $("#btnFbConnect").addEventListener("click", fbConnect);
 $("#fbToken").addEventListener("keydown", (e) => { if (e.key === "Enter") fbConnect(); });
 $("#btnFbLogout").addEventListener("click", fbLogout);

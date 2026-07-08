@@ -203,7 +203,7 @@ function paywallHtml() {
       <div class="lock-icon">🔒</div>
       <h3>Ferramenta <span class="grad-text">Pro</span></h3>
       <div class="lock-price">R$ ${PRICE},00<small>/mês</small></div>
-      <p>Desbloqueie as 20 ferramentas, incluindo Meta Ads ao vivo, Biblioteca de Ofertas, Explorador e Rastreador de Vendas.</p>
+      <p>Desbloqueie as 19 ferramentas, incluindo Meta Ads ao vivo (campanhas + funil), Biblioteca de Ofertas e Rastreador de Vendas automático.</p>
       <ol class="lock-steps">
         <li>Copie o PIX abaixo e pague <strong>R$ ${PRICE},00</strong> (chave CPF: ${PIX_KEY})</li>
         <li>Envie o comprovante + seu usuário (<strong>${escHtml(currentUser() || "")}</strong>) pro dono do site</li>
@@ -350,7 +350,7 @@ $("#admUsersTable").addEventListener("click", (e) => {
 
 // bloqueia o painel admin pra não-admin
 window.addEventListener("hashchange", () => {
-  if (location.hash === "#admin" && !isAdmin()) location.hash = "painel";
+  if (location.hash === "#admin" && !isAdmin()) location.hash = "meta";
 });
 
 // expiração automática: re-checa o plano a cada troca de tela e a cada minuto,

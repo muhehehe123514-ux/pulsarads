@@ -10,12 +10,11 @@ Tudo roda **100% no navegador** — site estático, sem backend. Contas, sessão
 
 | Ferramenta | O que faz |
 |---|---|
-| 📡 Meta Ads ao vivo | Conecta sua conta pela Marketing API oficial da Meta (token próprio): campanhas, gasto, compras, ROAS ao vivo, pausar/ativar e importar pro painel |
+| 📡 Meta Ads ao vivo | Marketing API oficial (token próprio): campanhas, gasto, compras, ROAS ao vivo, funil de conversão por campanha e pausar/ativar |
 | 🔥 Explorador de Ofertas | Filtros por nicho/país/idioma/mídia + bateria de pesquisas automáticas na biblioteca de anúncios do Facebook, com fila e pesquisas salvas |
-| 💰 Rastreador de Vendas | Atribuição estilo Utmify: vendas por campanha e criativo, ROAS/CPA reais cruzando com o painel, import CSV do checkout |
+| 💰 Rastreador de Vendas | Vendas, lucro, ticket e ROAS puxados automaticamente da conta conectada do Facebook Ads, por campanha |
 | 🧭 Modelador Low Ticket | Oferta, copy, funil (bump + upsell), estrutura de campanha e checklist prontos a partir de 4 campos |
 | 🎯 UTMs Dinâmicas | Macros de rastreamento do Meta ({{campaign.name}}…), Google (ValueTrack) e TikTok, no padrão Utmify |
-| 📊 Painel de Campanhas | KPIs (lucro, ROAS, CPC, CTR), gráfico investimento vs. faturamento, dados no localStorage, export JSON |
 | ✍️ Gerador de Headlines | 10 títulos persuasivos por clique, baseados em frameworks de copywriting |
 | 🔁 Reescritor de Copy | Variações com sinônimos e conectores, mantendo a estrutura |
 | 🧱 Frameworks de Copy | Copies completas em AIDA, PAS e BAB a partir de 4 campos |

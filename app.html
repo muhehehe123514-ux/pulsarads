@@ -95,7 +95,6 @@
         <div class="side-group" id="adminGroup" hidden>Administração</div>
         <a href="#admin" class="side-link" data-tool="admin" id="adminLink" hidden><span class="si">👑</span> Admin</a>
         <div class="side-group">Visão geral</div>
-        <a href="#painel" class="side-link" data-tool="painel"><span class="si">📊</span> Painel de Campanhas</a>
         <a href="#meta" class="side-link" data-tool="meta"><span class="si">📡</span> Meta Ads ao vivo <span class="side-new">novo</span></a>
         <a href="#vendas" class="side-link" data-tool="vendas"><span class="si">💰</span> Rastreador de Vendas</a>
         <div class="side-group">Oportunidades</div>
@@ -127,64 +126,6 @@
 
     <!-- ============ MAIN ============ -->
     <main class="app-main">
-
-      <!-- ===== PAINEL ===== -->
-      <section class="panel" id="tool-painel">
-        <div class="panel-head">
-          <h2>📊 Painel de Campanhas</h2>
-          <p>Registre suas campanhas e acompanhe os KPIs. Tudo fica salvo apenas no seu navegador (localStorage).</p>
-        </div>
-
-        <div class="kpi-row" id="kpiRow">
-          <div class="kpi-tile"><div class="kpi-lbl">Investido</div><div class="kpi-val" id="kpiInvest">R$ 0,00</div></div>
-          <div class="kpi-tile"><div class="kpi-lbl">Faturado</div><div class="kpi-val" id="kpiRevenue">R$ 0,00</div></div>
-          <div class="kpi-tile"><div class="kpi-lbl">Lucro</div><div class="kpi-val" id="kpiProfit">R$ 0,00</div><div class="kpi-delta" id="kpiProfitDelta"></div></div>
-          <div class="kpi-tile"><div class="kpi-lbl">ROAS médio</div><div class="kpi-val" id="kpiRoas">—</div></div>
-        </div>
-
-        <div class="card">
-          <h3>Nova campanha</h3>
-          <form id="campForm" class="form-grid">
-            <label>Nome da campanha <input type="text" id="cName" placeholder="Ex.: CBO Escala — Oferta X" required /></label>
-            <label>Plataforma
-              <select id="cPlatform">
-                <option>Meta Ads</option><option>Google Ads</option><option>TikTok Ads</option><option>Kwai Ads</option><option>Outra</option>
-              </select>
-            </label>
-            <label>Investimento (R$) <input type="number" id="cInvest" min="0" step="0.01" placeholder="500.00" required /></label>
-            <label>Faturamento (R$) <input type="number" id="cRevenue" min="0" step="0.01" placeholder="1500.00" required /></label>
-            <label>Cliques <input type="number" id="cClicks" min="0" step="1" placeholder="320" /></label>
-            <label>Impressões <input type="number" id="cImpr" min="0" step="1" placeholder="15000" /></label>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary btn-sm">Adicionar campanha</button>
-              <button type="button" class="btn btn-ghost btn-sm" id="btnSample">Carregar exemplo</button>
-              <button type="button" class="btn btn-ghost btn-sm" id="btnExport">Exportar JSON</button>
-              <button type="button" class="btn btn-ghost btn-sm btn-danger" id="btnClear">Limpar tudo</button>
-            </div>
-          </form>
-        </div>
-
-        <div class="card">
-          <div class="card-head-row">
-            <h3>Investimento vs. Faturamento por campanha</h3>
-            <div class="viz-legend" id="chartLegend">
-              <span class="lg-item"><span class="lg-swatch" style="background:var(--series-1)"></span>Investido</span>
-              <span class="lg-item"><span class="lg-swatch" style="background:var(--series-2)"></span>Faturado</span>
-            </div>
-          </div>
-          <div class="viz-root" id="campChart"><div class="viz-empty">Adicione campanhas (ou carregue o exemplo) pra ver o gráfico.</div></div>
-        </div>
-
-        <div class="card">
-          <h3>Campanhas</h3>
-          <div class="table-wrap">
-            <table class="data-table" id="campTable">
-              <thead><tr><th>Campanha</th><th>Plataforma</th><th>Investido</th><th>Faturado</th><th>Lucro</th><th>ROAS</th><th>CPC</th><th>CTR</th><th></th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
 
       <!-- ===== HEADLINES ===== -->
       <section class="panel" id="tool-headlines">
@@ -600,7 +541,6 @@
           <div class="card">
             <div class="card-head-row">
               <h3>Minhas campanhas</h3>
-              <button class="btn btn-ghost btn-sm" id="btnFbImport">⬇ Importar pro Painel local</button>
             </div>
             <div id="fbStatus" class="hint" style="margin-bottom:12px"></div>
             <div class="table-wrap">
@@ -610,6 +550,18 @@
               </table>
             </div>
             <p class="hint">Pausar/ativar exige token com <code>ads_management</code>. Os dados vêm ao vivo da Marketing API oficial da Meta.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-head-row">
+              <h3>Funil de Conversão (Meta Ads)</h3>
+              <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-2);font-weight:600">
+                Campanha
+                <select id="fnCampaign" style="width:auto;min-width:220px"><option value="-1">Todas as campanhas (somadas)</option></select>
+              </label>
+            </div>
+            <div class="viz-root" id="funnelChart"><div class="viz-empty">Conecte a conta e carregue as campanhas pra ver o funil.</div></div>
+            <p class="hint">Etapas do pixel: Cliques no link → Visualizações de página → Checkouts iniciados (ICs) → Infos de pagamento → Compras. Percentuais em relação aos cliques. Se uma etapa não é rastreada pelo pixel do cliente, ela aparece zerada.</p>
           </div>
         </div>
 
@@ -786,66 +738,18 @@
       <section class="panel" id="tool-vendas">
         <div class="panel-head">
           <h2>💰 Rastreador de Vendas</h2>
-          <p>Atribuição estilo Utmify, versão local: registre (ou importe) suas vendas com campanha e criativo, e descubra de onde vem o lucro de verdade.</p>
+          <p>Vendas, lucro, ticket médio e ROAS puxados automaticamente da conta do Facebook Ads conectada — por campanha, sem digitar nada.</p>
         </div>
-        <div class="kpi-row">
-          <div class="kpi-tile"><div class="kpi-lbl">Receita rastreada</div><div class="kpi-val" id="slRevenue">R$ 0,00</div></div>
-          <div class="kpi-tile"><div class="kpi-lbl">Vendas</div><div class="kpi-val" id="slCount">0</div></div>
-          <div class="kpi-tile"><div class="kpi-lbl">Ticket médio</div><div class="kpi-val" id="slTicket">—</div></div>
-          <div class="kpi-tile"><div class="kpi-lbl">ROAS real</div><div class="kpi-val" id="slRoas">—</div><div class="kpi-delta" id="slRoasNote"></div></div>
-        </div>
-        <div class="card">
-          <h3>Nova venda</h3>
-          <form id="saleForm" class="form-grid">
-            <label>Produto <input type="text" id="sProduct" placeholder="Ex.: Ebook Receitas Fit" required /></label>
-            <label>Valor (R$) <input type="number" id="sValue" min="0" step="0.01" placeholder="27.00" required /></label>
-            <label>Campanha (utm_campaign) <input type="text" id="sCampaign" list="campNames" placeholder="Ex.: CBO Escala — Oferta A" /></label>
-            <datalist id="campNames"></datalist>
-            <label>Criativo (utm_content) <input type="text" id="sContent" placeholder="Ex.: criativo-03" /></label>
-            <label>Data <input type="date" id="sDate" /></label>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary btn-sm">Registrar venda 💰</button>
-              <label class="btn btn-ghost btn-sm" style="cursor:pointer">Importar CSV<input type="file" id="slCsv" accept=".csv,text/csv" hidden /></label>
-              <button type="button" class="btn btn-ghost btn-sm" id="btnSlExport">Exportar JSON</button>
-              <button type="button" class="btn btn-ghost btn-sm" id="btnSlSample">Carregar exemplo</button>
-              <button type="button" class="btn btn-ghost btn-sm btn-danger" id="btnSlClear">Limpar tudo</button>
-            </div>
-          </form>
-          <p class="hint">CSV aceito: colunas com nomes tipo <code>valor</code>, <code>produto</code>, <code>utm_campaign</code>, <code>utm_content</code>, <code>data</code> (a ordem não importa). Exporte do seu checkout e importe aqui.</p>
-        </div>
-        <div class="card">
+        <div class="card" id="metaAutoCard">
           <div class="card-head-row">
-            <h3>Receita por campanha</h3>
+            <h3>📡 Automático do Facebook Ads</h3>
+            <div class="form-actions" style="margin:0">
+              <button class="btn btn-primary btn-sm" id="btnMetaSync">↻ Sincronizar agora</button>
+            </div>
           </div>
-          <div class="viz-root" id="salesChart"><div class="viz-empty">Registre vendas (ou carregue o exemplo) pra ver o gráfico.</div></div>
+          <div id="metaAutoBody"></div>
         </div>
-        <div class="card">
-          <h3>Atribuição por campanha</h3>
-          <div class="table-wrap">
-            <table class="data-table" id="attrCampTable">
-              <thead><tr><th>Campanha</th><th>Vendas</th><th>Receita</th><th>% da receita</th><th>Investido (painel)</th><th>ROAS</th><th>CPA</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="card">
-          <h3>Atribuição por criativo</h3>
-          <div class="table-wrap">
-            <table class="data-table" id="attrContentTable">
-              <thead><tr><th>Criativo</th><th>Vendas</th><th>Receita</th><th>% da receita</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="card">
-          <h3>Últimas vendas</h3>
-          <div class="table-wrap">
-            <table class="data-table" id="salesTable">
-              <thead><tr><th>Data</th><th>Produto</th><th>Valor</th><th>Campanha</th><th>Criativo</th><th></th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
+
       </section>
 
       <!-- ===== UTMS DINÂMICAS ===== -->

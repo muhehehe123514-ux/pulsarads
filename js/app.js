@@ -55,8 +55,8 @@ const hideTip = () => (tooltip.hidden = true);
 // ---------- Roteamento por hash ----------
 const PANELS = $$(".panel").map((p) => p.id.replace("tool-", ""));
 function route() {
-  const id = location.hash.replace("#", "") || "painel";
-  const target = PANELS.includes(id) ? id : "painel";
+  const id = location.hash.replace("#", "") || "meta";
+  const target = PANELS.includes(id) ? id : "meta";
   $$(".panel").forEach((p) => p.classList.toggle("active", p.id === "tool-" + target));
   $$(".side-link").forEach((a) => a.classList.toggle("active", a.dataset.tool === target));
   $("#appSidebar").classList.remove("open");
@@ -68,170 +68,15 @@ route();
 $("#appBurger").addEventListener("click", () => $("#appSidebar").classList.toggle("open"));
 
 // ============================================================
-// 1) PAINEL DE CAMPANHAS
+// (o Painel de Campanhas manual foi removido — os dados de campanha
+//  agora vêm ao vivo do 📡 Meta Ads via API oficial)
 // ============================================================
-const CAMP_KEY = "pulsar_campaigns";
-const loadCamps = () => JSON.parse(localStorage.getItem(CAMP_KEY) || "[]");
-const saveCamps = (c) => localStorage.setItem(CAMP_KEY, JSON.stringify(c));
-
-const SAMPLE_CAMPS = [
-  { name: "CBO Escala — Oferta A", platform: "Meta Ads", invest: 850, revenue: 2610, clicks: 1240, impr: 61000 },
-  { name: "Teste de criativos", platform: "Meta Ads", invest: 320, revenue: 415, clicks: 510, impr: 28500 },
-  { name: "Pesquisa fundo de funil", platform: "Google Ads", invest: 610, revenue: 1930, clicks: 430, impr: 9800 },
-  { name: "Spark Ads — vídeo 03", platform: "TikTok Ads", invest: 400, revenue: 980, clicks: 890, impr: 74000 },
-  { name: "Remarketing 7 dias", platform: "Meta Ads", invest: 180, revenue: 760, clicks: 260, impr: 12400 },
-];
-
-function renderPainel() {
-  const camps = loadCamps();
-  const tInvest = camps.reduce((s, c) => s + c.invest, 0);
-  const tRevenue = camps.reduce((s, c) => s + c.revenue, 0);
-  const profit = tRevenue - tInvest;
-  $("#kpiInvest").textContent = BRL.format(tInvest);
-  $("#kpiRevenue").textContent = BRL.format(tRevenue);
-  $("#kpiProfit").textContent = BRL.format(profit);
-  const delta = $("#kpiProfitDelta");
-  if (camps.length === 0) { delta.textContent = ""; }
-  else if (profit >= 0) { delta.textContent = "↑ operação no verde"; delta.className = "kpi-delta up"; }
-  else { delta.textContent = "↓ operação no vermelho"; delta.className = "kpi-delta down"; }
-  $("#kpiRoas").textContent = tInvest > 0 ? (tRevenue / tInvest).toFixed(2) + "x" : "—";
-
-  // tabela
-  const tbody = $("#campTable tbody");
-  tbody.innerHTML = camps.length
-    ? camps.map((c, i) => {
-        const lucro = c.revenue - c.invest;
-        const roas = c.invest > 0 ? (c.revenue / c.invest).toFixed(2) + "x" : "—";
-        const cpc = c.clicks > 0 ? BRL.format(c.invest / c.clicks) : "—";
-        const ctr = c.impr > 0 && c.clicks > 0 ? ((c.clicks / c.impr) * 100).toFixed(2) + "%" : "—";
-        return `<tr>
-          <td>${escHtml(c.name)}</td><td>${escHtml(c.platform)}</td>
-          <td>${BRL.format(c.invest)}</td><td>${BRL.format(c.revenue)}</td>
-          <td class="${lucro >= 0 ? "pos" : "neg"}">${BRL.format(lucro)}</td>
-          <td>${roas}</td><td>${cpc}</td><td>${ctr}</td>
-          <td><button class="row-del" data-i="${i}" title="Excluir">✕</button></td>
-        </tr>`;
-      }).join("")
-    : `<tr><td colspan="9" style="text-align:center;color:var(--muted)">Nenhuma campanha ainda.</td></tr>`;
-
-  renderCampChart(camps);
-  // ROAS real e datalist do Rastreador dependem das campanhas
-  if (window.renderVendas) renderVendas();
-}
-
 function roundedTopRect(x, y, w, h, r) {
   if (h <= 0) return "";
   r = Math.min(r, w / 2, h);
   return `M${x},${y + h} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + w - r},${y} Q${x + w},${y} ${x + w},${y + r} L${x + w},${y + h} Z`;
 }
 
-function renderCampChart(camps) {
-  const root = $("#campChart");
-  if (!camps.length) {
-    root.innerHTML = `<div class="viz-empty">Adicione campanhas (ou carregue o exemplo) pra ver o gráfico.</div>`;
-    return;
-  }
-  const W = 720, H = 300, mL = 64, mR = 12, mT = 14, mB = 46;
-  const iw = W - mL - mR, ih = H - mT - mB;
-  const max = Math.max(...camps.map((c) => Math.max(c.invest, c.revenue)), 1);
-  const niceMax = Math.ceil(max / Math.pow(10, Math.floor(Math.log10(max)))) * Math.pow(10, Math.floor(Math.log10(max)));
-  const y = (v) => mT + ih - (v / niceMax) * ih;
-
-  const n = camps.length;
-  const groupW = iw / n;
-  const barW = Math.min(34, groupW * 0.32);
-  const gap = 2;
-
-  let grid = "";
-  for (let g = 0; g <= 4; g++) {
-    const gy = mT + (ih * g) / 4;
-    const val = niceMax * (1 - g / 4);
-    grid += `<line x1="${mL}" y1="${gy}" x2="${W - mR}" y2="${gy}" stroke="${g === 4 ? "var(--axis-line)" : "var(--grid-line)"}" stroke-width="${g === 4 ? 1.5 : 1}"/>`;
-    grid += `<text x="${mL - 10}" y="${gy + 4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="Inter,sans-serif">${val >= 1000 ? (val / 1000).toFixed(val % 1000 ? 1 : 0) + "k" : NUM.format(val)}</text>`;
-  }
-
-  let bars = "", hovers = "", labels = "";
-  camps.forEach((c, i) => {
-    const cx = mL + groupW * i + groupW / 2;
-    const x1 = cx - barW - gap / 2;
-    const x2 = cx + gap / 2;
-    const h1 = ih - (y(c.invest) - mT);
-    const h2 = ih - (y(c.revenue) - mT);
-    bars += `<path d="${roundedTopRect(x1, y(c.invest), barW, h1, 4)}" fill="var(--series-1)"/>`;
-    bars += `<path d="${roundedTopRect(x2, y(c.revenue), barW, h2, 4)}" fill="var(--series-2)"/>`;
-    const short = c.name.length > 14 ? c.name.slice(0, 13) + "…" : c.name;
-    labels += `<text x="${cx}" y="${H - mB + 20}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="Inter,sans-serif">${escHtml(short)}</text>`;
-    hovers += `<rect class="hv" data-i="${i}" x="${mL + groupW * i}" y="${mT}" width="${groupW}" height="${ih}" fill="transparent"/>`;
-  });
-
-  root.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de investimento e faturamento por campanha">${grid}${bars}${labels}${hovers}</svg>`;
-
-  root.querySelectorAll(".hv").forEach((r) => {
-    r.addEventListener("pointermove", (e) => {
-      const c = camps[+r.dataset.i];
-      const lucro = c.revenue - c.invest;
-      showTip(
-        `<strong>${escHtml(c.name)}</strong>
-         <span class="tt-row"><span class="lg-swatch" style="background:var(--series-1)"></span>Investido: ${BRL.format(c.invest)}</span>
-         <span class="tt-row"><span class="lg-swatch" style="background:var(--series-2)"></span>Faturado: ${BRL.format(c.revenue)}</span>
-         <span class="tt-row">Lucro: ${BRL.format(lucro)} · ROAS ${c.invest > 0 ? (c.revenue / c.invest).toFixed(2) : "—"}x</span>`,
-        e.clientX, e.clientY
-      );
-    });
-    r.addEventListener("pointerleave", hideTip);
-  });
-}
-
-$("#campForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const camps = loadCamps();
-  camps.push({
-    name: $("#cName").value.trim(),
-    platform: $("#cPlatform").value,
-    invest: parseFloat($("#cInvest").value) || 0,
-    revenue: parseFloat($("#cRevenue").value) || 0,
-    clicks: parseInt($("#cClicks").value) || 0,
-    impr: parseInt($("#cImpr").value) || 0,
-  });
-  saveCamps(camps);
-  e.target.reset();
-  renderPainel();
-  toast("Campanha adicionada 📊");
-});
-
-$("#campTable").addEventListener("click", (e) => {
-  const btn = e.target.closest(".row-del");
-  if (!btn) return;
-  const camps = loadCamps();
-  camps.splice(+btn.dataset.i, 1);
-  saveCamps(camps);
-  renderPainel();
-});
-
-$("#btnSample").addEventListener("click", () => {
-  saveCamps(SAMPLE_CAMPS);
-  renderPainel();
-  toast("Dados de exemplo carregados ✨");
-});
-
-$("#btnClear").addEventListener("click", () => {
-  if (!confirm("Apagar todas as campanhas do painel? Essa ação não tem volta.")) return;
-  saveCamps([]);
-  renderPainel();
-  toast("Painel limpo 🧹");
-});
-
-$("#btnExport").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify(loadCamps(), null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "pulsarads-campanhas.json";
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast("JSON exportado ⬇️");
-});
-
-renderPainel();
 
 // ============================================================
 // 2) GERADOR DE HEADLINES

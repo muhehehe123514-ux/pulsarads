@@ -329,18 +329,23 @@ $("#btnLibPaste").addEventListener("click", () => {
 window.libAddFromSearch = (q, url, country) => {
   const offers = loadOffers();
   const today = new Date().toISOString().slice(0, 10);
-  if (offers.some((o) => o.name.trim().toLowerCase() === q.trim().toLowerCase())) {
-    toast("Essa oferta já está na Biblioteca 📚");
-    return;
+  let idx = offers.findIndex((o) => o.name.trim().toLowerCase() === q.trim().toLowerCase());
+  if (idx < 0) {
+    offers.push({
+      name: q, advertiser: "", niche: -1, country: country || "BR", ads: null, price: null,
+      funnel: "Página de vendas direta", status: "observando", url, notes: "Veio do Explorador",
+      firstSeen: today, lastChecked: today, fav: false,
+    });
+    saveOffers(offers);
+    idx = offers.length - 1;
+    toast(`"${q}" adicionada à 📚 Biblioteca`);
   }
-  offers.push({
-    name: q, advertiser: "", niche: -1, country: country || "BR", ads: null, price: null,
-    funnel: "Página de vendas direta", status: "observando", url, notes: "Veio do Explorador",
-    firstSeen: today, lastChecked: today, fav: false,
-  });
-  saveOffers(offers);
   renderLibrary();
-  toast(`"${q}" adicionada à 📚 Biblioteca`);
+  // abre o preview da oferta direto no site
+  location.hash = "#biblioteca";
+  openOfferModal(idx);
 };
 
+// primeira visita: a Biblioteca ja chega populada com ofertas de exemplo
+if (localStorage.getItem(LIB_KEY) === null) saveOffers(SAMPLE_OFFERS);
 renderLibrary();
