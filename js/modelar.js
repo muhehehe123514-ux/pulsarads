@@ -12,8 +12,18 @@
 const md = {
   idx: null, offer: null, ideas: [], idea: null, proms: [], prom: null,
   headline: "", sub: "", brand: "Sua Marca",
-  palette: 0, fontHead: 0, fontBody: 0, checkout: "",
+  palette: 0, fontHead: 0, fontBody: 0, checkout: "", charged: false,
 };
+
+// conta 1 uso só ao FINALIZAR a modelagem (1ª vez que baixa/publica a página).
+// bloqueia se não houver usos; libera re-baixar/re-publicar a mesma página.
+function mdChargeOnce() {
+  if (md.charged) return true;
+  if (window.canUse && !window.canUse()) return false;
+  md.charged = true;
+  if (window.spendUse) window.spendUse();
+  return true;
+}
 
 // ---------- passo 1: escolher a oferta-base ----------
 function mdRefreshOffers() {
@@ -439,6 +449,7 @@ $("#btnMdPage").addEventListener("click", () => {
   md.palette = +$("#mdPalette").value;
   md.fontHead = +$("#mdFontHead").value;
   md.fontBody = +$("#mdFontBody").value;
+  md.charged = false; // nova página: o uso só conta quando finalizar (baixar/publicar)
   const html = buildSalesPage();
   const frame = $("#mdFrame");
   frame.srcdoc = html;
@@ -717,6 +728,7 @@ function mdSerialize() {
 $("#btnMdDownload").addEventListener("click", () => {
   const html = mdSerialize();
   if (!html) return toast("Gere a página primeiro 🚀");
+  if (!mdChargeOnce()) return;
   const blob = new Blob([html], { type: "text/html" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -743,6 +755,7 @@ function loadJSZip() {
 $("#btnMdPublish").addEventListener("click", async () => {
   const html = mdSerialize();
   if (!html) return toast("Gere a página primeiro 🚀");
+  if (!mdChargeOnce()) return;
   let token = localStorage.getItem(NTL_KEY);
   if (!token) {
     token = prompt(

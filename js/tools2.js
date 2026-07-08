@@ -66,6 +66,7 @@ $("#btnOpGenerate").addEventListener("click", () => {
     kws = [...NICHES[+nicheVal].kws];
     if (custom) kws.unshift(custom);
   }
+  if (!window.canUse()) return;
   const qual = $("#opQualifier").value;
   const searches = [...kws];
   // combina a frase de vendedor com gatilho de preço/entrega (filtro sempre ativo)
@@ -78,6 +79,7 @@ $("#btnOpGenerate").addEventListener("click", () => {
   renderOpQueue();
   toast(`${opQueue.length} pesquisas prontas 🔥`);
   $("#opScanCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  window.spendUse();
 });
 
 function renderOpQueue() {
@@ -326,6 +328,7 @@ const LT_NAMES = ["Guia Prático", "Método Express", "Planner Completo", "Manua
 const LT_MECH = ["em 3 passos", "com o método dos 15 minutos", "sem complicação", "do zero ao resultado", "no piloto automático", "com checklist diário"];
 
 $("#btnLtGenerate").addEventListener("click", () => {
+  if (!window.canUse()) return;
   const niche = NICHES[+$("#ltNiche").value];
   const topic = $("#ltTopic").value.trim() || niche.kws[0];
   const format = $("#ltFormat").value;
@@ -370,4 +373,5 @@ $("#btnLtGenerate").addEventListener("click", () => {
     .map(([t, tag], i) => outItem(t, tag, i))
     .join("");
   toast("Plano low ticket turbinado 🧭");
+  window.spendUse();
 });

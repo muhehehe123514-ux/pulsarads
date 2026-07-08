@@ -1,28 +1,17 @@
 /* ============================================================
    PulsarAds — Limite de USOS das ferramentas
-   Não é cobrança por token: cada vez que você usa uma função
-   conta como 1 uso. A conta grátis tem ~15 usos e a Pro ~70,
-   e o contador recarrega sozinho a cada 5 horas. Max é ilimitado.
-   Tudo por navegador/usuário.
+   Não é cobrança por token: cada USO COMPLETO de uma função
+   (gerar um criativo, modelar 1 low ticket, finalizar uma
+   página de vendas…) desconta 1. Só desconta quando a função
+   é concluída. Grátis = 15 usos, Pro = 140, recarrega a cada 4h.
+   Max é ilimitado. Tudo por navegador/usuário.
    ============================================================ */
 
 "use strict";
 
 const USE_KEY = "pulsar_tokens"; // { [user]: { left, resetAt } }
-const RESET_MS = 5 * 60 * 60 * 1000; // recarrega a cada 5h
-// quantos usos das ferramentas cada plano tem por janela de 5h
-const USE_CAP = { free: 15, pro: 70, max: Infinity };
-
-// botões que contam como "1 uso" ao serem acionados
-const PREMIUM_BTNS = new Set([
-  "btnHeadlines", "btnRewrite", "btnFrameworks", "btnBlocked",
-  "btnCrDownload", "btnCrVideo",
-  "btnOcrRun",
-  "btnMdIdeas", "btnMdPage",
-  "btnLtGenerate",
-  "btnOpGenerate",
-  "btnTtsPlay",
-]);
+const RESET_MS = 4 * 60 * 60 * 1000; // recarrega a cada 4h
+const USE_CAP = { free: 15, pro: 140, max: Infinity };
 
 const loadUses = () => JSON.parse(localStorage.getItem(USE_KEY) || "{}");
 const saveUses = (o) => localStorage.setItem(USE_KEY, JSON.stringify(o));
@@ -52,30 +41,39 @@ function resetText(ts) {
   return "em instantes";
 }
 
-// cobra 1 uso; retorna true se pôde usar, false (e mostra planos) se acabou
-function chargeTokens(n = 1, label) {
+// Checa se PODE usar (>=1 uso ou ilimitado). NÃO desconta.
+// Se estiver zerado, abre os planos e retorna false — chame ANTES de rodar a função.
+function canUse() {
   const st = useState();
   if (st.unlimited) return true;
-  if (st.left < n) {
-    if (typeof showPlansModal === "function") {
-      showPlansModal(
-        `🪫 Você atingiu o limite de usos do seu plano (${st.cap} a cada 5h). ` +
-        `Ele recarrega sozinho <strong>${resetText(st.resetAt)}</strong>.` +
-        ` Quer usar sem esperar? O plano <strong>🚀 Max é ilimitado</strong>.`
-      );
-    } else if (typeof toast === "function") {
-      toast("Limite de usos atingido — recarrega " + resetText(st.resetAt));
-    }
-    renderTokenMeter();
-    return false;
+  if (st.left >= 1) return true;
+  if (typeof showPlansModal === "function") {
+    showPlansModal(
+      `🪫 Você usou todos os ${st.cap} usos do seu plano. ` +
+      `Eles recarregam sozinhos <strong>${resetText(st.resetAt)}</strong>.` +
+      ` Quer usar sem esperar? O plano <strong>🚀 Max é ilimitado</strong>.`
+    );
+  } else if (typeof toast === "function") {
+    toast("Limite de usos atingido — recarrega " + resetText(st.resetAt));
   }
+  return false;
+}
+
+// Desconta 1 uso — chame só quando a função foi CONCLUÍDA de verdade.
+function spendUse(label) {
+  const st = useState();
+  if (st.unlimited) return;
   const all = loadUses();
-  all[st.user].left = st.left - n;
+  all[st.user].left = Math.max(0, st.left - 1);
   saveUses(all);
   renderTokenMeter();
-  return true;
+  if (all[st.user].left <= 3) {
+    toast(`Uso registrado ✅ Restam ${all[st.user].left} usos (recarrega ${resetText(st.resetAt)})`);
+  }
 }
-window.chargeTokens = chargeTokens;
+
+window.canUse = canUse;
+window.spendUse = spendUse;
 window.tokenState = useState;
 
 // ---------- medidor na sidebar ----------
@@ -97,7 +95,7 @@ function renderTokenMeter() {
   const planName = st.plan === "pro" ? "⚡ Pro" : "🆓 Grátis";
   el.innerHTML = `<div class="tm-top"><span>🎟️ Usos · ${planName}</span><strong>${st.left}/${st.cap}</strong></div>
     <div class="tm-bar"><span style="width:${pct}%"></span></div>
-    <div class="tm-note">${st.left < st.cap ? `Recarrega ${resetText(st.resetAt)}` : "Cheio ✅"} · a cada 5h${st.plan !== "max" ? ` · <a href="#" data-open-plans>turbinar ⚡</a>` : ""}</div>`;
+    <div class="tm-note">${st.left < st.cap ? `Recarrega ${resetText(st.resetAt)}` : "Cheio ✅"} · a cada 4h${st.plan !== "max" ? ` · <a href="#" data-open-plans>turbinar ⚡</a>` : ""}</div>`;
 }
 window.renderTokenMeter = renderTokenMeter;
 
@@ -107,17 +105,6 @@ document.addEventListener("click", (e) => {
     if (typeof showPlansModal === "function") showPlansModal();
   }
 });
-
-// intercepta os botões premium ANTES do handler real (fase de captura):
-// se o limite de usos acabou, bloqueia a ação e abre os planos
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest("button");
-  if (!btn || !PREMIUM_BTNS.has(btn.id)) return;
-  if (!chargeTokens(1, btn.id)) {
-    e.stopImmediatePropagation();
-    e.preventDefault();
-  }
-}, true);
 
 // atualiza a contagem regressiva a cada 30s
 setInterval(() => { if (!document.getElementById("tokenMeter")?.hidden) renderTokenMeter(); }, 30000);

@@ -376,27 +376,52 @@
                 <button class="btn btn-primary btn-sm" id="btnCrDownload">Baixar PNG ⬇️</button>
               </div>
               <div class="video-box">
-                <strong>🎬 Vídeo animado</strong>
+                <strong>🎬 Vídeo animado (grátis, no navegador)</strong>
                 <div class="form-grid" style="margin-top:10px">
                   <label>Duração
                     <select id="crVidDur">
                       <option value="5">5 segundos</option>
                       <option value="8" selected>8 segundos</option>
                       <option value="12">12 segundos</option>
+                      <option value="15">15 segundos</option>
                     </select>
                   </label>
-                  <label>Animação
+                  <label>Animação simples
                     <select id="crVidAnim">
                       <option value="slide">Entrada deslizante</option>
                       <option value="zoom">Zoom cinematográfico</option>
                       <option value="pulse">Gradiente vivo + pulso</option>
+                      <option value="float">Flutuar suave</option>
+                      <option value="shine">Brilho passando</option>
+                      <option value="kenburns">Ken Burns (pan + zoom)</option>
+                      <option value="bounce">Quique no botão</option>
                     </select>
                   </label>
                 </div>
                 <div class="form-actions">
                   <button class="btn btn-primary btn-sm" id="btnCrVideo">🎬 Gerar vídeo (WebM)</button>
                 </div>
-                <p class="hint">O vídeo é gravado do próprio canvas, em 1080p. Baixa em .webm (o Meta Ads aceita; se precisar de .mp4, converta em sites como cloudconvert.com).</p>
+                <p class="hint">Gravado do próprio canvas, 1080p, em .webm (o Meta Ads aceita; pra .mp4 converta em cloudconvert.com).</p>
+
+                <div class="ai-anim">
+                  <strong>🏆 Animação profissional com IA (texto → prompt)</strong>
+                  <p class="hint" style="margin:6px 0 10px">Descreva o movimento que você imagina e gere um <strong>prompt de animação nível prêmio</strong> pra colar numa IA de vídeo (Runway, Kling, Higgsfield, Pika, Sora).</p>
+                  <label class="lbl-block">Como você quer a animação?
+                    <textarea id="crVidBrief" rows="2" placeholder="Ex.: a câmera se aproxima do pote de bolo enquanto o vapor sobe, luz dourada, o texto surge suave e o botão pulsa no final"></textarea>
+                  </label>
+                  <div class="form-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" id="btnCrAnimPrompt">🏆 Criar prompt de animação</button>
+                  </div>
+                  <label class="lbl-block" style="margin-top:8px">Prompt de animação (edite)
+                    <textarea id="crAnimPrompt" rows="4" placeholder="Clique em 🏆 Criar prompt de animação."></textarea>
+                  </label>
+                  <div class="ai-launch">
+                    <button type="button" class="ai-btn" data-aivid="runway">▶ Runway</button>
+                    <button type="button" class="ai-btn" data-aivid="kling">▶ Kling</button>
+                    <button type="button" class="ai-btn" data-aivid="pika">▶ Pika</button>
+                    <button type="button" class="ai-btn" data-aivid="sora">▶ Sora</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -406,27 +431,39 @@
         </div>
         <div class="card" id="crAiCard">
           <div class="card-head-row">
-            <h3>🤖 Gerar criativo com IA (grátis)</h3>
+            <h3>🤖 Criar criativo com IA</h3>
           </div>
-          <p class="hint" style="margin-bottom:14px">Monte o prompt automaticamente a partir de uma oferta modelada (ou escreva o seu), revise, e abra direto na IA de imagem — você usa sua própria conta, logada no navegador. Tudo grátis.</p>
+          <p class="hint" style="margin-bottom:14px">Descreva em palavras simples o que você quer — o <strong>criador de prompts profissionais</strong> transforma isso num prompt de nível de estúdio. Depois escolha a IA de imagem.</p>
           <div class="form-grid">
-            <label>Base do prompt
+            <label>Base (oferta modelada, opcional)
               <select id="crAiOffer"><option value="">— prompt livre —</option></select>
             </label>
-            <div class="form-actions" style="align-self:end">
-              <button type="button" class="btn btn-ghost btn-sm" id="btnCrAiBuild">✨ Montar prompt</button>
-            </div>
+            <label>Quantos criativos
+              <select id="crAiCount">
+                <option value="1">1 criativo</option>
+                <option value="2">2 criativos</option>
+                <option value="3">3 criativos</option>
+                <option value="4">4 criativos</option>
+              </select>
+            </label>
           </div>
-          <label class="lbl-block" style="margin-top:10px">Prompt (edite à vontade)
-            <textarea id="crAiPrompt" rows="4" placeholder="Descreva o criativo: produto, estilo, cores, texto na imagem, formato…"></textarea>
+          <label class="lbl-block" style="margin-top:10px">O que você quer no criativo? (fale simples)
+            <textarea id="crAiBrief" rows="2" placeholder="Ex.: um pote de bolo caseiro na mesa de madeira, luz quente, texto 'Receitas que vendem', clima aconchegante"></textarea>
           </label>
-          <div class="ai-launch">
-            <button type="button" class="ai-btn" data-ai="gemini">✦ Gemini / Nano Banana</button>
-            <button type="button" class="ai-btn" data-ai="chatgpt">⬡ ChatGPT (DALL·E)</button>
-            <button type="button" class="ai-btn" data-ai="copilot">◑ Copilot Designer</button>
-            <button type="button" class="ai-btn" data-ai="leonardo">◆ Leonardo.ai</button>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="btnCrAiBuild">✨ Criar prompt profissional</button>
           </div>
-          <p class="hint">O prompt é copiado automaticamente e a IA abre em nova aba — é só colar (Ctrl+V) e gerar. Gemini e Copilot Designer têm geração de imagem gratuita generosa; Leonardo dá créditos diários grátis.</p>
+          <label class="lbl-block" style="margin-top:10px">Prompt profissional (edite à vontade)
+            <textarea id="crAiPrompt" rows="5" placeholder="Clique em ✨ Criar prompt profissional — ou escreva o seu aqui."></textarea>
+          </label>
+          <p class="hint" style="margin:6px 0">Escolha a IA (abre na sua conta logada, no seu navegador — o prompt é copiado automaticamente):</p>
+          <div class="ai-launch">
+            <button type="button" class="ai-btn" data-ai="gemini">✦ Gemini <span class="ai-lim">grátis · ~100 img/dia</span></button>
+            <button type="button" class="ai-btn" data-ai="chatgpt">⬡ ChatGPT / DALL·E <span class="ai-lim">grátis · ~2–3 img/dia</span></button>
+            <button type="button" class="ai-btn" data-ai="copilot">◑ Copilot Designer <span class="ai-lim">grátis · 15 boosts/dia</span></button>
+            <button type="button" class="ai-btn" data-ai="leonardo">◆ Leonardo.ai <span class="ai-lim">grátis · ~150 créditos/dia</span></button>
+          </div>
+          <p class="hint" id="crAiNote">Os limites acima são das contas gratuitas de cada IA (mudam conforme a plataforma). Se você escolheu mais de 1 criativo, cole o prompt e gere quantas variações quiser.</p>
         </div>
         <div class="card">
           <div class="card-head-row">
@@ -570,9 +607,20 @@
             <textarea id="ttsInput" rows="5" placeholder="Cole aqui a copy que você quer ouvir narrada…"></textarea>
           </label>
           <div class="form-grid">
-            <label>Voz neural <select id="ttsVoice"></select></label>
-            <label>Velocidade <input type="range" id="ttsRate" min="0.5" max="2" step="0.1" value="1" /><span class="hint" id="ttsRateLbl">1.0x</span></label>
-            <label>Tom <input type="range" id="ttsPitch" min="0.5" max="1.5" step="0.1" value="1" /><span class="hint" id="ttsPitchLbl">1.0</span></label>
+            <label>Voz
+              <select id="ttsGender">
+                <option value="female">👩 Feminina</option>
+                <option value="male">👨 Masculina</option>
+              </select>
+            </label>
+            <label>Tom
+              <select id="ttsTone">
+                <option value="animada">😃 Mais animada</option>
+                <option value="normal" selected>🙂 Tom normal</option>
+                <option value="calma">😌 Mais calma</option>
+              </select>
+            </label>
+            <label>Voz neural detectada <select id="ttsVoice"></select></label>
           </div>
           <div class="form-actions">
             <button class="btn btn-primary btn-sm" id="btnTtsPlay">▶ Reproduzir</button>

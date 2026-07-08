@@ -23,7 +23,7 @@ const PIX_CITY = "BRASILIA";
 // e sem o Explorador de Ofertas
 const PLAN_INFO = {
   pro: { label: "Pro", emoji: "⚡", price: 40,  ref: "PULSARPRO",
-         bullets: ["Todas as 21 ferramentas", "🔥 Explorador + 📚 Biblioteca + ✨ Modelar", "Até ~70 usos das ferramentas a cada 5h"] },
+         bullets: ["Todas as 21 ferramentas", "🔥 Explorador + 📚 Biblioteca + ✨ Modelar", "140 usos · recarrega a cada 4h"] },
   max: { label: "Max", emoji: "🚀", price: 130, ref: "PULSARMAX",
          bullets: ["Tudo do Pro", "Usos ILIMITADOS", "Sem espera de recarga", "Prioridade nas novidades"] },
 };

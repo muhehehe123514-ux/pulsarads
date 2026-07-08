@@ -908,7 +908,8 @@ body.auth-locked .app-shell, body.auth-locked .app-topbar { visibility: hidden; 
   display: flex; align-items: flex-start; justify-content: center;
   padding: 40px 16px; overflow: auto;
   background: rgba(7, 7, 13, 0.72);
-  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 .modal-backdrop[hidden] { display: none !important; }
 .modal {
@@ -960,6 +961,13 @@ body.auth-locked .app-shell, body.auth-locked .app-topbar { visibility: hidden; 
   transition: transform 0.15s, border-color 0.15s, background 0.15s;
 }
 .ai-btn:hover { transform: translateY(-2px); border-color: var(--cyan); background: rgba(56, 189, 248, 0.12); }
+.ai-btn .ai-lim { display: block; font-size: 10.5px; font-weight: 600; color: var(--muted); margin-top: 3px; }
+.ai-anim {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.ai-anim > strong { font-size: 14px; }
 
 /* ---------- Modelar v2: barras de estilo / seções / device ---------- */
 .md-style-bar, .md-add-bar, .md-device-bar {

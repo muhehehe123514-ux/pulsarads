@@ -101,6 +101,7 @@ const H_TEMPLATES = [
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 $("#btnHeadlines").addEventListener("click", () => {
+  if (!window.canUse()) return;
   const p = $("#hProduct").value.trim() || "seu produto";
   const a = $("#hAudience").value.trim() || "quem trabalha com tráfego";
   const b = $("#hBenefit").value.trim() || "ter mais resultado";
@@ -111,6 +112,7 @@ $("#btnHeadlines").addEventListener("click", () => {
       return outItem(txt, `Headline ${i + 1}`, i);
     })
     .join("");
+  window.spendUse();
 });
 
 function outItem(text, tag, i = 0) {
@@ -152,6 +154,7 @@ const OPENERS = ["Olha só:", "Presta atenção:", "Vamos direto ao ponto:", "Se
 $("#btnRewrite").addEventListener("click", () => {
   const input = $("#rwInput").value.trim();
   if (!input) return toast("Cole uma copy primeiro ✍️");
+  if (!window.canUse()) return;
   const variations = [1, 2, 3].map((v) => {
     let out = input;
     SYNONYMS.forEach(([re, opts]) => {
@@ -162,12 +165,14 @@ $("#btnRewrite").addEventListener("click", () => {
     return out;
   });
   $("#rewriteOut").innerHTML = variations.map((t, i) => outItem(t, `Variação ${i + 1}`, i)).join("");
+  window.spendUse();
 });
 
 // ============================================================
 // 4) FRAMEWORKS DE COPY
 // ============================================================
 $("#btnFrameworks").addEventListener("click", () => {
+  if (!window.canUse()) return;
   const p = $("#fwProduct").value.trim() || "nosso produto";
   const pain = $("#fwPain").value.trim() || "não ver resultado";
   const gain = $("#fwGain").value.trim() || "resultados consistentes";
@@ -186,6 +191,7 @@ $("#btnFrameworks").addEventListener("click", () => {
   ]
     .map(([t, tag], i) => outItem(t, tag, i))
     .join("");
+  window.spendUse();
 });
 
 // ============================================================
@@ -659,6 +665,16 @@ function drawCreative(t = 1, loop = 0) {
     const z = 1.12 - 0.12 * crEase(t) + Math.sin(loop * 0.8) * 0.004;
     ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
   }
+  // Ken Burns: zoom lento + pan horizontal
+  if (anim === "kenburns") {
+    const z = 1.08 + loop * 0.004;
+    const panX = Math.sin(loop * 0.25) * W * 0.03;
+    ctx.translate(W / 2 + panX, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
+  }
+  // flutuar suave: cena inteira sobe e desce de leve
+  if (anim === "float") {
+    ctx.translate(0, Math.sin(loop * 1.4) * 10);
+  }
 
   // fundo em gradiente (vivo no modo pulse)
   const shift = anim === "pulse" ? Math.sin(loop * 1.2) * 0.3 : 0;
@@ -804,10 +820,10 @@ function drawCreative(t = 1, loop = 0) {
     cy += 50;
   } else cy += 30;
 
-  // CTA (com pulso contínuo em vídeo)
+  // CTA (com pulso contínuo em vídeo; quique mais forte no modo "bounce")
   const cta = ($("#crCta").value.trim() || "QUERO AGORA").toUpperCase();
   const aCta = stage(0.68, 0.95);
-  const pulse = loop > 0 ? 1 + 0.03 * Math.sin(loop * 4) : 1;
+  const pulse = loop > 0 ? 1 + (anim === "bounce" ? 0.08 * Math.abs(Math.sin(loop * 5)) : 0.03 * Math.sin(loop * 4)) : 1;
   ctx.font = "700 44px 'Inter', sans-serif";
   const cw = ctx.measureText(cta).width + 120;
   const ctaX = centered ? cx - cw / 2 : cx;
@@ -889,6 +905,22 @@ function drawCreative(t = 1, loop = 0) {
     ctx.restore();
   }
 
+  // brilho passando (faixa de luz diagonal atravessando a cena no vídeo)
+  if (anim === "shine" && loop > 0) {
+    const period = 3.4;
+    const p = (loop % period) / period; // 0→1
+    const bx = -W * 0.5 + p * (W * 2);
+    ctx.save();
+    ctx.translate(W / 2, H / 2); ctx.rotate(-0.35); ctx.translate(-W / 2, -H / 2);
+    const g = ctx.createLinearGradient(bx - W * 0.2, 0, bx + W * 0.2, 0);
+    g.addColorStop(0, "rgba(255,255,255,0)");
+    g.addColorStop(0.5, "rgba(255,255,255,0.28)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(-W * 0.5, -H * 0.5, W * 2, H * 2);
+    ctx.restore();
+  }
+
   // rodapé sutil
   ctx.globalAlpha = 0.5;
   ctx.font = "500 28px 'Inter', sans-serif";
@@ -931,37 +963,89 @@ function refreshCrAiOffers() {
   if (cur && sel.querySelector(`option[value="${cur}"]`)) sel.value = cur;
 }
 
+// ---------- Criador de prompts PROFISSIONAIS (imagem) ----------
 function buildAiPrompt() {
   const sel = $("#crAiOffer");
   const offers = typeof loadOffers === "function" ? loadOffers() : [];
   const o = sel && sel.value !== "" ? offers[+sel.value] : null;
+  const brief = $("#crAiBrief")?.value.trim() || "";
   const headline = $("#crHeadline").value.trim() || (o ? o.name : "Sua oferta em destaque");
-  const format = $("#crFormat").value === "story" ? "formato vertical 9:16 (story/reels)" : "formato quadrado 1:1 (feed)";
-  const themeName = CR_THEMES[+$("#crTheme").value]?.name || "cores vibrantes";
-  // se houver uma oferta modelada em aberto, usa o ângulo/promessa dela
-  const angle = (typeof md === "object" && md && md.idea) ? ` Ângulo: ${md.idea}.` : "";
+  const cta = ($("#crCta").value.trim() || "QUERO AGORA").toUpperCase();
+  const story = $("#crFormat").value === "story";
+  const format = story ? "vertical 9:16 (story/reels)" : "quadrado 1:1 (feed)";
+  const space = story ? "no terço superior" : "à esquerda ou no topo";
+  const themeName = (CR_THEMES[+$("#crTheme").value]?.name || "cores vibrantes").toLowerCase();
+  const angle = (typeof md === "object" && md && md.idea) ? ` Ângulo de venda: ${md.idea}.` : "";
   const desc = o ? (o.desc || o.notes || "") : "";
-  return `Crie um anúncio publicitário profissional de alta conversão (${format}) para a oferta "${headline}".` +
-    (desc ? ` Sobre o produto: ${desc.replace(/\s+/g, " ").slice(0, 240)}.` : "") +
-    angle +
-    ` Estilo visual: ${themeName.toLowerCase()}, moderno, com forte apelo comercial, iluminação de estúdio, alto contraste e espaço para texto. ` +
-    `Inclua o texto "${headline}" em destaque e um botão de call-to-action "${($("#crCta").value.trim() || "QUERO AGORA").toUpperCase()}". ` +
-    `Sem marca d'água, sem texto embaçado, tipografia legível em português do Brasil.`;
+  const subject = brief || (desc ? desc.replace(/\s+/g, " ").slice(0, 220) : `o produto "${headline}"`);
+
+  return `Anúncio publicitário profissional de alta conversão, ${format}. ` +
+    `Cena principal: ${subject}.` + angle + ` ` +
+    `Fotografia comercial de alto padrão: iluminação de estúdio com softbox, luz de contorno sutil, profundidade de campo rasa (aparência de lente 85mm), foco nítido no produto, cores ricas em paleta ${themeName}. ` +
+    `Composição pela regra dos terços, com espaço livre ${space} para o texto. ` +
+    `Inclua o título em português do Brasil "${headline}" em tipografia bold e legível, e um botão de call-to-action "${cta}". ` +
+    `Clima aspiracional e apetitoso, gradação de cor profissional, altíssimo detalhe, 4k. ` +
+    `Sem marca d'água, sem texto distorcido, sem erros de ortografia.`;
 }
 
 $("#btnCrAiBuild").addEventListener("click", () => {
   $("#crAiPrompt").value = buildAiPrompt();
-  toast("Prompt montado ✨ Revise e escolha a IA");
+  const n = +($("#crAiCount")?.value || 1);
+  toast(`Prompt profissional criado ✨${n > 1 ? ` — peça ${n} variações na IA` : ""}`);
 });
 
-$$(".ai-btn").forEach((btn) => {
+$$(".ai-btn[data-ai]").forEach((btn) => {
   btn.addEventListener("click", () => {
     let prompt = $("#crAiPrompt").value.trim();
     if (!prompt) { prompt = buildAiPrompt(); $("#crAiPrompt").value = prompt; }
+    const n = +($("#crAiCount")?.value || 1);
+    const full = n > 1 ? `${prompt}\n\n(Gere ${n} variações diferentes deste criativo.)` : prompt;
     const t = AI_TARGETS[btn.dataset.ai];
-    copyText(prompt, `Prompt copiado! Abrindo ${t.name} — cole com Ctrl+V 🤖`);
-    const url = btn.dataset.ai === "chatgpt" ? t.url + encodeURIComponent(prompt) : t.url;
+    copyText(full, `Prompt copiado! Abrindo ${t.name} — cole com Ctrl+V 🤖`);
+    const url = btn.dataset.ai === "chatgpt" ? t.url + encodeURIComponent(full) : t.url;
     setTimeout(() => window.open(url, "_blank", "noopener"), 350);
+  });
+});
+
+// ---------- Criador de prompt de ANIMAÇÃO (vídeo) nível prêmio ----------
+const AI_VID_TARGETS = {
+  runway: { name: "Runway", url: "https://app.runwayml.com/" },
+  kling: { name: "Kling", url: "https://klingai.com/" },
+  pika: { name: "Pika", url: "https://pika.art/" },
+  sora: { name: "Sora", url: "https://sora.com/" },
+};
+
+function buildAnimPrompt() {
+  const brief = $("#crVidBrief")?.value.trim() || "";
+  const sel = $("#crAiOffer");
+  const offers = typeof loadOffers === "function" ? loadOffers() : [];
+  const o = sel && sel.value !== "" ? offers[+sel.value] : null;
+  const headline = $("#crHeadline").value.trim() || (o ? o.name : "sua oferta");
+  const cta = ($("#crCta").value.trim() || "QUERO AGORA").toUpperCase();
+  const story = $("#crFormat").value === "story";
+  const scene = brief || `apresentação cinematográfica do produto "${headline}"`;
+  return `Comercial cinematográfico de produto, nível de premiação em publicidade, ${story ? "9:16 vertical" : "1:1"}, 24fps, ~6 segundos. ` +
+    `Cena: ${scene}. ` +
+    `Câmera: movimento suave de aproximação (push-in) com leve parallax e easing natural; abertura com um gancho visual no 1º segundo. ` +
+    `Movimento: elementos entram com fluidez, partículas/vapor/luz derivando lentamente, brilho passando pelo produto. ` +
+    `Iluminação: volumétrica e dourada, com um lens flare sutil; profundidade de campo rasa. ` +
+    `Ritmo: hero shot do produto no meio e revelação do call-to-action no final. ` +
+    `Final: o título "${headline}" surge suave e o botão "${cta}" pulsa uma vez. ` +
+    `Estilo: premium, gradação de cor cinematográfica, 4k, altíssima fluidez, sem texto distorcido.`;
+}
+
+$("#btnCrAnimPrompt")?.addEventListener("click", () => {
+  $("#crAnimPrompt").value = buildAnimPrompt();
+  toast("Prompt de animação criado 🏆 Cole numa IA de vídeo");
+});
+
+$$(".ai-btn[data-aivid]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    let prompt = $("#crAnimPrompt").value.trim();
+    if (!prompt) { prompt = buildAnimPrompt(); $("#crAnimPrompt").value = prompt; }
+    const t = AI_VID_TARGETS[btn.dataset.aivid];
+    copyText(prompt, `Prompt copiado! Abrindo ${t.name} — cole com Ctrl+V 🎬`);
+    setTimeout(() => window.open(t.url, "_blank", "noopener"), 350);
   });
 });
 
@@ -969,12 +1053,14 @@ window.addEventListener("hashchange", () => { if (location.hash === "#criativo")
 setTimeout(refreshCrAiOffers, 0);
 
 $("#btnCrDownload").addEventListener("click", () => {
+  if (!window.canUse()) return;
   renderCreative();
   const a = document.createElement("a");
   a.href = $("#crCanvas").toDataURL("image/png");
   a.download = `pulsarads-criativo-${$("#crFormat").value}.png`;
   a.click();
   toast("Criativo baixado 🎨");
+  window.spendUse();
 });
 
 // ---------- Vídeo animado (canvas → WebM, 100% no navegador) ----------
@@ -983,6 +1069,7 @@ $("#btnCrVideo").addEventListener("click", async () => {
   if (crRecording) return;
   const btn = $("#btnCrVideo");
   if (!("MediaRecorder" in window)) return toast("Seu navegador não suporta gravação de vídeo 😕");
+  if (!window.canUse()) return;
   crRecording = true;
   btn.disabled = true;
   const dur = +$("#crVidDur").value;
@@ -1018,6 +1105,7 @@ $("#btnCrVideo").addEventListener("click", async () => {
   crRecording = false;
   renderCreative();
   toast("Vídeo gerado e baixado 🎬");
+  window.spendUse();
 });
 
 // fontes carregam depois do primeiro paint — redesenha quando prontas
@@ -1031,38 +1119,57 @@ const synth = window.speechSynthesis;
 let voices = [];
 
 // só as vozes NEURAIS/naturais em português (as mais realistas)
-const NEURAL_RE = /natural|neural|online|google|multilingual|premium|enhanced|siri|luciana|thalita|francisca|antonio|brenda|donato/i;
+const NEURAL_RE = /natural|neural|online|google|multilingual|premium|enhanced|siri|luciana|thalita|francisca|antonio|brenda|donato|fabio|giovanna|leila|leticia|manuela|valerio|nicolau|humberto|julio/i;
+// nomes tipicamente femininos/masculinos das vozes neurais pt-BR/pt-PT
+const FEMALE_RE = /female|mulher|luciana|thalita|francisca|brenda|maria|giovanna|leila|leticia|manuela|heloisa|fernanda|joana|ana|camila|yara|raquel/i;
+const MALE_RE = /male|homem|antonio|donato|fabio|julio|ricardo|daniel|valerio|nicolau|humberto|duarte|cristiano|felipe|paulo/i;
+// tom → velocidade/pitch (nem rápido nem devagar no "normal")
+const TTS_TONES = { animada: { rate: 1.12, pitch: 1.12 }, normal: { rate: 1.0, pitch: 1.0 }, calma: { rate: 0.9, pitch: 0.92 } };
+
+let ttsNeural = [];
+function ttsGenderOf(v) {
+  if (FEMALE_RE.test(v.name)) return "female";
+  if (MALE_RE.test(v.name)) return "male";
+  return "unknown";
+}
 
 function loadVoices() {
   voices = synth ? synth.getVoices() : [];
   const sel = $("#ttsVoice");
-  if (!voices.length) {
-    sel.innerHTML = `<option>Carregando vozes…</option>`;
-    return;
-  }
+  if (!sel) return;
+  if (!voices.length) { sel.innerHTML = `<option>Carregando vozes…</option>`; return; }
   const pt = voices.filter((v) => v.lang.toLowerCase().startsWith("pt"));
   let neural = pt.filter((v) => NEURAL_RE.test(v.name));
   let note = "";
   if (!neural.length) {
-    // sistema sem voz neural instalada: mostra as de melhor qualidade disponíveis
     neural = pt.length ? pt : voices.slice(0, 8);
     note = pt.length
-      ? "Seu sistema não tem voz neural instalada — mostrando as vozes em português disponíveis. Pra vozes neurais, use o Edge ou instale vozes 'Natural' nas configurações de fala do Windows."
+      ? "Seu sistema não tem voz neural instalada — usando as melhores vozes em português disponíveis. Pra vozes neurais, use o Edge ou instale vozes 'Natural' nas configurações de fala do Windows."
       : "Nenhuma voz em português neste navegador — use o Chrome ou o Edge.";
   }
-  sel.innerHTML = neural
-    .map((v) => `<option value="${escHtml(v.name)}">${escHtml(v.name.replace(/microsoft/i, "").trim())} ${/pt.?br/i.test(v.lang) ? "🇧🇷" : "🇵🇹"}</option>`)
-    .join("");
+  ttsNeural = neural;
+  renderTtsVoiceSelect();
   const hint = $("#ttsHint");
   if (hint && note) hint.textContent = note;
 }
+
+// filtra as vozes pelo gênero escolhido e preenche o select "voz detectada"
+function renderTtsVoiceSelect() {
+  const sel = $("#ttsVoice");
+  if (!sel) return;
+  const gender = $("#ttsGender")?.value || "female";
+  let list = ttsNeural.filter((v) => ttsGenderOf(v) === gender);
+  if (!list.length) list = ttsNeural; // não deu pra classificar: mostra todas
+  sel.innerHTML = list
+    .map((v) => `<option value="${escHtml(v.name)}">${escHtml(v.name.replace(/microsoft/i, "").trim())} ${/pt.?br/i.test(v.lang) ? "🇧🇷" : "🇵🇹"}</option>`)
+    .join("");
+}
+
 if (synth) {
   loadVoices();
   synth.onvoiceschanged = loadVoices;
 }
-
-$("#ttsRate").addEventListener("input", () => ($("#ttsRateLbl").textContent = (+$("#ttsRate").value).toFixed(1) + "x"));
-$("#ttsPitch").addEventListener("input", () => ($("#ttsPitchLbl").textContent = (+$("#ttsPitch").value).toFixed(1)));
+$("#ttsGender")?.addEventListener("change", renderTtsVoiceSelect);
 
 $("#btnTtsPlay").addEventListener("click", () => {
   if (!synth) return toast("Seu navegador não suporta síntese de voz 😕");
@@ -1072,10 +1179,11 @@ $("#btnTtsPlay").addEventListener("click", () => {
   const u = new SpeechSynthesisUtterance(text);
   const v = voices.find((v) => v.name === $("#ttsVoice").value);
   if (v) u.voice = v;
-  u.rate = +$("#ttsRate").value;
-  u.pitch = +$("#ttsPitch").value;
+  const tone = TTS_TONES[$("#ttsTone")?.value] || TTS_TONES.normal;
+  u.rate = tone.rate;
+  u.pitch = tone.pitch;
   synth.speak(u);
-  toast("Reproduzindo 🔊");
+  toast(`Reproduzindo 🔊 (${$("#ttsGender")?.value === "male" ? "masculina" : "feminina"}, ${$("#ttsTone")?.value || "normal"})`);
 });
 $("#btnTtsStop").addEventListener("click", () => synth?.cancel());
 
