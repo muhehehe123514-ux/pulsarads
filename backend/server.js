@@ -40,21 +40,45 @@ const DB = path.join(__dirname, "grants.json");
 const loadDB = () => { try { return JSON.parse(fs.readFileSync(DB, "utf8")); } catch { return {}; } };
 const saveDB = (d) => { try { fs.writeFileSync(DB, JSON.stringify(d)); } catch (e) { console.error("saveDB", e.message); } };
 
-function grant(user, plan) {
+function grant(user, plan, fromDate) {
   const db = loadDB();
-  const until = new Date();
-  const base = db[user]?.paidUntil && new Date(db[user].paidUntil) > new Date() ? new Date(db[user].paidUntil) : new Date();
+  const base = fromDate
+    ? new Date(fromDate)
+    : (db[user]?.paidUntil && new Date(db[user].paidUntil) > new Date() ? new Date(db[user].paidUntil) : new Date());
   base.setDate(base.getDate() + GRANT_DAYS);
   db[user] = { plan, paidUntil: base.toISOString().slice(0, 10), updated: new Date().toISOString() };
   saveDB(db);
   console.log(`[grant] ${user} -> ${plan} até ${db[user].paidUntil}`);
+  return db[user];
+}
+
+// FONTE DA VERDADE: pergunta ao próprio Mercado Pago se há pagamento aprovado
+// pra esse usuário. Assim o plano NUNCA se perde, mesmo se o disco resetar.
+async function mpLatestApproved(user) {
+  if (!MP_TOKEN) return null;
+  let best = null;
+  for (const plan of ["pro", "max"]) {
+    const ref = `${user}|${plan}`;
+    const url = `https://api.mercadopago.com/v1/payments/search?external_reference=${encodeURIComponent(ref)}&status=approved&sort=date_approved&criteria=desc&limit=1`;
+    try {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${MP_TOKEN}` } });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const p = d.results && d.results[0];
+      if (p && p.date_approved) {
+        const when = new Date(p.date_approved);
+        if (!best || when > best.when) best = { plan, when };
+      }
+    } catch (e) { console.error("mp search", e.message); }
+  }
+  return best; // { plan, when } ou null
 }
 
 const app = express();
 app.use(cors({ origin: FRONTEND_ORIGIN === "*" ? true : FRONTEND_ORIGIN }));
 app.use(express.json());
 
-app.get("/", (_req, res) => res.json({ ok: true, service: "pulsarads-backend", mp: !!client }));
+app.get("/", (_req, res) => res.json({ ok: true, service: "pulsarads-backend", version: 2, mp: !!client, durable: true }));
 
 // cria a preferência de pagamento e devolve o link do checkout
 app.post("/api/create-preference", async (req, res) => {
@@ -97,19 +121,34 @@ app.post("/api/webhook", async (req, res) => {
     const payment = await new Payment(client).get({ id });
     if (payment.status === "approved" && payment.external_reference) {
       const [user, plan] = String(payment.external_reference).split("|");
-      if (user) grant(user, plan === "max" ? "max" : "pro");
+      if (user) grant(user, plan === "max" ? "max" : "pro", payment.date_approved);
     }
   } catch (e) {
     console.error("webhook", e.message);
   }
 });
 
-// o app consulta aqui pra saber se já foi liberado
-app.get("/api/status", (req, res) => {
+// o app consulta aqui pra saber se já foi liberado.
+// 1) tenta o cache local (rápido); 2) se não achar, PERGUNTA AO MERCADO PAGO
+//    (fonte da verdade) e recria o registro — assim o plano nunca se perde.
+app.get("/api/status", async (req, res) => {
   const user = String(req.query.user || "").trim().toLowerCase();
+  if (!user) return res.json({ plan: "free", paidUntil: null });
+
   const db = loadDB();
   const rec = db[user];
-  if (rec && new Date(rec.paidUntil) >= new Date()) return res.json({ plan: rec.plan, paidUntil: rec.paidUntil });
+  if (rec && new Date(rec.paidUntil) >= new Date()) {
+    return res.json({ plan: rec.plan, paidUntil: rec.paidUntil, source: "cache" });
+  }
+
+  // não tem no cache (ou expirou): confirma direto no Mercado Pago
+  const found = await mpLatestApproved(user);
+  if (found) {
+    const g = grant(user, found.plan, found.when); // reidrata o cache a partir do pagamento real
+    if (new Date(g.paidUntil) >= new Date()) {
+      return res.json({ plan: g.plan, paidUntil: g.paidUntil, source: "mercadopago" });
+    }
+  }
   res.json({ plan: "free", paidUntil: null });
 });
 
