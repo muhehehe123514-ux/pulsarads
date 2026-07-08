@@ -503,6 +503,7 @@
           <div class="meta-info" id="ocrPreview" hidden></div>
           <div class="form-actions">
             <button class="btn btn-primary btn-sm" id="btnOcrRun" disabled>🔍 Extrair texto</button>
+            <button class="btn btn-ghost btn-sm btn-danger" id="btnOcrClear" hidden>✕ Remover imagem</button>
             <span class="hint" id="ocrStatus">Na primeira extração o motor de OCR (~15 MB) é baixado — depois fica em cache.</span>
           </div>
         </div>
@@ -667,10 +668,12 @@
             <span id="metaDropText">📷 Clique ou arraste uma imagem aqui (JPG, PNG ou WebP)</span>
           </label>
           <div id="metaInfo" class="meta-info" hidden></div>
+          <div id="metaReport" hidden></div>
           <div class="form-actions">
             <button class="btn btn-primary btn-sm" id="btnMetaClean" disabled>Limpar metadados e baixar 🧹</button>
           </div>
-          <p class="hint">Como funciona: a imagem é redesenhada pixel a pixel em um novo arquivo, que nasce sem nenhum metadado EXIF/IPTC/XMP. Processamento 100% local.</p>
+          <p class="hint">Como funciona: a imagem é redesenhada pixel a pixel num arquivo novo, que nasce <strong>sem nenhum metadado</strong> (EXIF, GPS, câmera, data, IPTC, XMP). Eu leio e mostro o que estava na sua foto e confirmo que zerou. 100% local.</p>
+          <p class="hint" style="margin-top:6px">⚠️ <strong>Marca d'água não é metadado</strong> — ela faz parte dos pixels da imagem. Este limpador remove os dados invisíveis (localização, aparelho…), não apaga logos/marcas desenhadas na foto.</p>
         </div>
       </section>
 

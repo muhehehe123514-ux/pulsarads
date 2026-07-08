@@ -36,17 +36,34 @@ window.addEventListener("paste", (e) => {
   }
 });
 
+let ocrPreviewUrl = null;
+
 function setOcrFile(f) {
   if (!/^image\//.test(f.type)) return toast("Só imagens 📷");
   ocrFile = f;
-  const url = URL.createObjectURL(f);
+  if (ocrPreviewUrl) URL.revokeObjectURL(ocrPreviewUrl);
+  ocrPreviewUrl = URL.createObjectURL(f);
   $("#ocrPreview").hidden = false;
-  $("#ocrPreview").innerHTML = `<img src="${url}" alt="Imagem pra extrair texto" style="max-width:280px;width:auto;height:auto;max-height:220px" />
+  $("#ocrPreview").innerHTML = `<img src="${ocrPreviewUrl}" alt="Imagem pra extrair texto" style="max-width:280px;width:auto;height:auto;max-height:220px" />
     <dl><dt>Arquivo</dt><dd>${escHtml(f.name)}</dd></dl>`;
   $("#ocrDropText").textContent = "📷 " + f.name + " — clique pra trocar";
   $("#btnOcrRun").disabled = false;
+  $("#btnOcrClear").hidden = false;
   $("#ocrResultCard").hidden = true;
 }
+
+// remove a imagem do visualizador (pode ser antes OU depois de extrair)
+function clearOcrImage(keepResults) {
+  ocrFile = null;
+  if (ocrPreviewUrl) { URL.revokeObjectURL(ocrPreviewUrl); ocrPreviewUrl = null; }
+  $("#ocrPreview").hidden = true;
+  $("#ocrPreview").innerHTML = "";
+  $("#ocrDropText").innerHTML = "📷 Clique, arraste, ou copie uma imagem e cole com <kbd>Ctrl</kbd>+<kbd>V</kbd>";
+  $("#btnOcrRun").disabled = true;
+  $("#btnOcrClear").hidden = true;
+  if (!keepResults) { $("#ocrResultCard").hidden = true; $("#ocrStatus").textContent = "Na primeira extração o motor de OCR (~15 MB) é baixado — depois fica em cache."; }
+}
+$("#btnOcrClear").addEventListener("click", () => { clearOcrImage(false); toast("Imagem removida 🗑️"); });
 
 const TESS_VER = "5.1.1";
 function loadTesseract() {
@@ -107,14 +124,17 @@ $("#btnOcrRun").addEventListener("click", async () => {
       )
       .join("");
     $("#ocrResultCard").hidden = false;
-    status.textContent = `${lines.length} trecho${lines.length > 1 ? "s" : ""} encontrado${lines.length > 1 ? "s" : ""} — desmarque o que não quiser.`;
-    $("#ocrResultCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    status.textContent = `${lines.length} trecho${lines.length > 1 ? "s" : ""} encontrado${lines.length > 1 ? "s" : ""} — desmarque o que não quiser. (imagem já removida do visualizador)`;
     window.spendUse();
+    // remove a imagem do visualizador automaticamente, mantendo o resultado
+    clearOcrImage(true);
+    $("#ocrResultCard").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (err) {
     console.error("OCR:", err);
     status.textContent = "Erro no OCR: " + (err.message || err) + " — tente recarregar a página (Ctrl+F5).";
   }
-  btn.disabled = false;
+  // só reabilita se ainda houver imagem (após sucesso ela é removida)
+  btn.disabled = !ocrFile;
 });
 
 $("#btnOcrAll").addEventListener("click", () => {

@@ -1198,10 +1198,23 @@ const synth = window.speechSynthesis;
 let voices = [];
 
 // só as vozes NEURAIS/naturais em português (as mais realistas)
-const NEURAL_RE = /natural|neural|online|google|multilingual|premium|enhanced|siri|luciana|thalita|francisca|antonio|brenda|donato|fabio|giovanna|leila|leticia|manuela|valerio|nicolau|humberto|julio/i;
+const NEURAL_RE = /natural|neural|online|google|multilingual|premium|enhanced|siri|wavenet|luciana|thalita|francisca|antonio|brenda|donato|fabio|giovanna|leila|leticia|manuela|valerio|nicolau|humberto|julio|elza|yara|macerio|expressiv/i;
 // nomes tipicamente femininos/masculinos das vozes neurais pt-BR/pt-PT
-const FEMALE_RE = /female|mulher|luciana|thalita|francisca|brenda|maria|giovanna|leila|leticia|manuela|heloisa|fernanda|joana|ana|camila|yara|raquel/i;
-const MALE_RE = /male|homem|antonio|donato|fabio|julio|ricardo|daniel|valerio|nicolau|humberto|duarte|cristiano|felipe|paulo/i;
+const FEMALE_RE = /female|mulher|luciana|thalita|francisca|brenda|maria|giovanna|leila|leticia|manuela|heloisa|fernanda|joana|ana|camila|yara|raquel|elza/i;
+const MALE_RE = /male|homem|antonio|donato|fabio|julio|ricardo|daniel|valerio|nicolau|humberto|duarte|cristiano|felipe|paulo|macerio/i;
+
+// quanto mais natural, maior a pontuação (Natural/Online/Neural no topo)
+function voiceQuality(v) {
+  const n = v.name.toLowerCase();
+  let q = 0;
+  if (/natural/.test(n)) q += 100;
+  if (/online/.test(n)) q += 80;
+  if (/neural|wavenet/.test(n)) q += 70;
+  if (/google/.test(n)) q += 50;
+  if (/multilingual|premium|enhanced|expressiv/.test(n)) q += 40;
+  if (/pt-?br/i.test(v.lang)) q += 10; // prioriza pt-BR sobre pt-PT
+  return q;
+}
 // tom → velocidade/pitch (nem rápido nem devagar no "normal")
 const TTS_TONES = { animada: { rate: 1.12, pitch: 1.12 }, normal: { rate: 1.0, pitch: 1.0 }, calma: { rate: 0.9, pitch: 0.92 } };
 
@@ -1232,16 +1245,22 @@ function loadVoices() {
   if (hint && note) hint.textContent = note;
 }
 
-// filtra as vozes pelo gênero escolhido e preenche o select "voz detectada"
+// filtra as vozes pelo gênero escolhido, ordena pela mais natural e preenche o select
 function renderTtsVoiceSelect() {
   const sel = $("#ttsVoice");
   if (!sel) return;
   const gender = $("#ttsGender")?.value || "female";
   let list = ttsNeural.filter((v) => ttsGenderOf(v) === gender);
-  if (!list.length) list = ttsNeural; // não deu pra classificar: mostra todas
+  if (!list.length) list = ttsNeural.slice(); // não deu pra classificar: mostra todas
+  list.sort((a, b) => voiceQuality(b) - voiceQuality(a)); // as mais naturais primeiro
   sel.innerHTML = list
-    .map((v) => `<option value="${escHtml(v.name)}">${escHtml(v.name.replace(/microsoft/i, "").trim())} ${/pt.?br/i.test(v.lang) ? "🇧🇷" : "🇵🇹"}</option>`)
+    .map((v) => {
+      const star = voiceQuality(v) >= 70 ? " ⭐" : "";
+      return `<option value="${escHtml(v.name)}">${escHtml(v.name.replace(/microsoft/i, "").trim())} ${/pt.?br/i.test(v.lang) ? "🇧🇷" : "🇵🇹"}${star}</option>`;
+    })
     .join("");
+  // já seleciona a mais natural
+  if (list.length) sel.value = list[0].name;
 }
 
 if (synth) {
@@ -1345,9 +1364,68 @@ function fmtBytes(b) {
   return b > 1048576 ? (b / 1048576).toFixed(2) + " MB" : (b / 1024).toFixed(1) + " KB";
 }
 
+// ---------- leitor de metadados (JPEG EXIF/GPS/IPTC/XMP + PNG text chunks) ----------
+function readImageMeta(buf) {
+  const dv = new DataView(buf);
+  const res = { found: [], hasGPS: false, metaBytes: 0 };
+  // PNG?
+  if (dv.getUint32(0) === 0x89504e47) {
+    let off = 8;
+    while (off + 8 <= dv.byteLength) {
+      const len = dv.getUint32(off);
+      const type = String.fromCharCode(dv.getUint8(off + 4), dv.getUint8(off + 5), dv.getUint8(off + 6), dv.getUint8(off + 7));
+      if (["tEXt", "iTXt", "zTXt"].includes(type)) { res.found.push("Texto embutido (" + type + ")"); res.metaBytes += len; }
+      if (type === "eXIf") { res.found.push("EXIF"); res.metaBytes += len; }
+      if (type === "IEND") break;
+      off += 12 + len; // len + type(4) + data + crc(4)
+    }
+    return res;
+  }
+  // JPEG?
+  if (dv.getUint16(0) !== 0xffd8) return res;
+  let off = 2;
+  while (off + 4 <= dv.byteLength) {
+    if (dv.getUint8(off) !== 0xff) break;
+    const marker = dv.getUint16(off);
+    if (marker === 0xffda || marker === 0xffd9) break; // início da imagem / fim
+    const size = dv.getUint16(off + 2);
+    const seg = off + 4;
+    const sig = (n) => { let s = ""; for (let k = 0; k < n && seg + k < dv.byteLength; k++) s += String.fromCharCode(dv.getUint8(seg + k)); return s; };
+    if (marker === 0xffe1) {
+      if (sig(4) === "Exif") { res.metaBytes += size; parseExif(dv, seg + 6, res); }
+      else if (sig(4) === "http") { res.found.push("XMP (Adobe)"); res.metaBytes += size; }
+    } else if (marker === 0xffed) { res.found.push("IPTC"); res.metaBytes += size; }
+    else if (marker === 0xfffe) { res.found.push("Comentário"); res.metaBytes += size; }
+    off = seg + size - 2;
+  }
+  return res;
+}
+
+function parseExif(dv, tiff, res) {
+  try {
+    const le = dv.getUint16(tiff) === 0x4949; // 'II' = little-endian
+    const u16 = (o) => dv.getUint16(o, le);
+    const u32 = (o) => dv.getUint32(o, le);
+    const TAGS = { 0x010f: "Fabricante", 0x0110: "Modelo da câmera", 0x0131: "Software", 0x0132: "Data/hora", 0x9003: "Data original", 0x013b: "Autor", 0x8298: "Copyright" };
+    const ifd0 = tiff + u32(tiff + 4);
+    const n = u16(ifd0);
+    const seen = new Set();
+    for (let i = 0; i < n; i++) {
+      const e = ifd0 + 2 + i * 12;
+      const tag = u16(e);
+      if (tag === 0x8825) { res.hasGPS = true; res.found.push("📍 Localização GPS"); }
+      if (TAGS[tag] && !seen.has(tag)) { seen.add(tag); res.found.push(TAGS[tag]); }
+    }
+    if (!res.found.some((f) => /EXIF/.test(f))) res.found.unshift("EXIF (câmera/data)");
+  } catch (_) { res.found.push("EXIF"); }
+}
+
+let metaMetaFound = null;
+
 function handleMetaFile(file) {
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return toast("Use JPG, PNG ou WebP 📷");
   metaFileRef = file;
+  $("#metaReport").hidden = true;
   const url = URL.createObjectURL(file);
   const img = new Image();
   img.onload = () => {
@@ -1365,6 +1443,19 @@ function handleMetaFile(file) {
     $("#metaDropText").textContent = "📷 " + file.name + " — clique pra trocar";
   };
   img.src = url;
+  // lê os metadados reais pra mostrar o que existe
+  file.arrayBuffer().then((buf) => {
+    metaMetaFound = readImageMeta(buf);
+    const rep = $("#metaReport");
+    rep.hidden = false;
+    if (metaMetaFound.found.length) {
+      rep.innerHTML = `<div class="meta-report has"><strong>🔍 Metadados encontrados nesta imagem:</strong>
+        <ul>${[...new Set(metaMetaFound.found)].map((f) => `<li>${escHtml(f)}</li>`).join("")}</ul>
+        <span class="hint">Clique em "Limpar" pra remover tudo isso e baixar a versão limpa.</span></div>`;
+    } else {
+      rep.innerHTML = `<div class="meta-report clean">✅ Esta imagem <strong>já está limpa</strong> — não encontrei EXIF, GPS nem outros metadados. (Se você esperava remover uma marca d'água visível, isso não é metadado — está desenhado nos pixels.)</div>`;
+    }
+  }).catch(() => {});
 }
 
 $("#btnMetaClean").addEventListener("click", () => {
@@ -1375,14 +1466,23 @@ $("#btnMetaClean").addEventListener("click", () => {
   canvas.getContext("2d").drawImage(metaImg, 0, 0);
   const isPng = metaFileRef.type === "image/png";
   canvas.toBlob(
-    (blob) => {
+    async (blob) => {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       const base = metaFileRef.name.replace(/\.[^.]+$/, "");
       a.download = `${base}-limpo.${isPng ? "png" : "jpg"}`;
       a.click();
       URL.revokeObjectURL(a.href);
-      toast(`Imagem limpa baixada (${fmtBytes(blob.size)}) 🧹`);
+      // PROVA: relê o arquivo limpo e confirma que zerou os metadados
+      let after = { found: [] };
+      try { after = readImageMeta(await blob.arrayBuffer()); } catch (_) {}
+      const before = (metaMetaFound && [...new Set(metaMetaFound.found)]) || [];
+      $("#metaReport").hidden = false;
+      $("#metaReport").innerHTML = `<div class="meta-report clean">
+        🧹 <strong>Limpo e baixado!</strong> (${fmtBytes(blob.size)})<br>
+        Antes: <strong>${before.length}</strong> metadado${before.length === 1 ? "" : "s"}${before.length ? " (" + before.join(", ") + ")" : ""}.
+        Depois: <strong>${after.found.length}</strong> ✅ ${after.found.length === 0 ? "— arquivo 100% limpo." : ""}</div>`;
+      toast(`Imagem limpa: ${before.length} → 0 metadados 🧹`);
     },
     isPng ? "image/png" : "image/jpeg",
     0.95

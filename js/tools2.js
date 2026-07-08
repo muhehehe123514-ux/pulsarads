@@ -74,7 +74,9 @@ $("#btnOpGenerate").addEventListener("click", () => {
     const extra = qual || QUALIFIERS_AUTO[i % QUALIFIERS_AUTO.length];
     if (!k.toLowerCase().includes(extra.toLowerCase())) searches.push(`${k} ${extra}`);
   });
-  opQueue = searches.slice(0, 12).map((q) => ({ q, url: adLibUrl(q), opened: false }));
+  const nicheIdx = nicheVal === "custom" ? -1 : +nicheVal;
+  const cc = $("#opCountry").value;
+  opQueue = searches.slice(0, 12).map((q) => ({ q, url: adLibUrl(q), opened: false, niche: nicheIdx, country: cc }));
   $("#opScanCard").hidden = false;
   renderOpQueue();
   toast(`${opQueue.length} pesquisas prontas 🔥`);
@@ -101,17 +103,19 @@ function renderOpQueue() {
       const stats = saved
         ? `<div class="op-mini-stats"><span>👥 ${saved.ads ?? "?"} anúncios</span><span>💵 ${saved.price ? "R$ " + saved.price : "—"}</span><span>📚 salva</span></div>`
         : `<div class="op-mini-stats"><span>🔎 ativos agora</span><span>${country}</span><span>filtro de venda ON</span></div>`;
-      return `<article class="op-card${s.opened ? " done" : ""}">
-        <div class="op-thumb">${img ? `<img src="${img.dataUrl}" alt="" />` : emoji}<span class="op-num">${s.opened ? "✅ vista" : "PESQUISA " + (i + 1)}</span></div>
-        <div class="op-body">
-          <strong>${escHtml(s.q)}</strong>
-          <div class="oc-chips"><span class="chip">${escHtml(nicheName)}</span>${saved ? `<span class="chip chip-hot">📚 na Biblioteca</span>` : ""}</div>
-          ${stats}
-          <div class="op-actions">
-            <button class="btn btn-primary btn-sm" data-op-open="${i}">👁 Ver anúncios</button>
-            <button class="btn btn-ghost btn-sm" data-op-save="${i}" title="Salvar pesquisa">💾</button>
-            <button class="btn btn-ghost btn-sm" data-op-lib="${i}" title="Adicionar à Biblioteca com preview">➕</button>
+      return `<article class="op-card${s.opened ? " seen" : ""}">
+        <div class="op-clickable" data-op-prev="${i}" title="Ver prévia da oferta">
+          <div class="op-thumb">${img ? `<img src="${img.dataUrl}" alt="" />` : emoji}<span class="op-num">${s.opened ? "✅ vista" : "PESQUISA " + (i + 1)}</span></div>
+          <div class="op-body">
+            <strong>${escHtml(s.q)}</strong>
+            <div class="oc-chips"><span class="chip">${escHtml(nicheName)}</span>${saved ? `<span class="chip chip-hot">📚 na Biblioteca</span>` : ""}</div>
+            ${stats}
           </div>
+        </div>
+        <div class="op-actions">
+          <button class="btn btn-primary btn-sm" data-op-prev="${i}">👁 Ver prévia</button>
+          <button class="btn btn-ghost btn-sm" data-op-lib="${i}" title="Adicionar à Biblioteca">➕</button>
+          <button class="btn btn-ghost btn-sm" data-op-save="${i}" title="Salvar pesquisa">💾</button>
         </div>
       </article>`;
     })
@@ -143,18 +147,13 @@ $("#btnOpReset").addEventListener("click", () => {
 });
 
 $("#opSearchList").addEventListener("click", (e) => {
-  const open = e.target.closest("[data-op-open]");
+  const prev = e.target.closest("[data-op-prev]");
   const save = e.target.closest("[data-op-save]");
   const lib = e.target.closest("[data-op-lib]");
   if (lib && window.libAddFromSearch) {
     const s = opQueue[+lib.dataset.opLib];
-    window.libAddFromSearch(s.q, s.url, $("#opCountry").value);
-  }
-  if (open) {
-    const s = opQueue[+open.dataset.opOpen];
-    s.opened = true;
-    window.open(s.url, "_blank", "noopener");
-    renderOpQueue();
+    window.libAddFromSearch(s.q, s.url, s.country || $("#opCountry").value);
+    return;
   }
   if (save) {
     const s = opQueue[+save.dataset.opSave];
@@ -163,8 +162,140 @@ $("#opSearchList").addEventListener("click", (e) => {
     localStorage.setItem(SAVED_KEY, JSON.stringify(saved.slice(0, 30)));
     renderOpSaved();
     toast("Pesquisa salva 💾");
+    return;
   }
+  if (prev) openOpPreview(+prev.dataset.opPrev);
 });
+
+// ---------- Prévia da oferta estilo Biblioteca de Anúncios do Facebook ----------
+function openOpPreview(i) {
+  const s = opQueue[i];
+  if (!s) return;
+  const offers = typeof loadOffers === "function" ? loadOffers() : [];
+  const saved = offers.find((o) => o.name.trim().toLowerCase() === s.q.trim().toLowerCase()) || null;
+
+  const nicheIdx = saved && saved.niche >= 0 ? saved.niche : s.niche;
+  const nicheName = nicheIdx >= 0 && NICHES[nicheIdx] ? NICHES[nicheIdx].name : "—";
+  const emoji = typeof NICHE_EMOJI !== "undefined" && nicheIdx >= 0 ? (NICHE_EMOJI[nicheIdx] || "🔥") : "🔥";
+  const st = saved && typeof LIB_STATUS !== "undefined" ? (LIB_STATUS[saved.status] || LIB_STATUS.observando) : null;
+  const country = saved?.country || s.country || "BR";
+  const isVsl = saved ? /vsl/i.test(saved.funnel || "") : null;
+
+  // imagens do produto (carrossel) — usa as que estiverem salvas
+  const imgs = [];
+  if (saved?.img && typeof imgById === "function") { const r = imgById(saved.img); if (r) imgs.push(r.dataUrl); }
+  const carousel = imgs.length
+    ? `<div class="fb-carousel">${imgs.map((u) => `<div class="fb-slide"><img src="${u}" alt="criativo"></div>`).join("")}</div>`
+    : `<div class="fb-noimg">📷🎬 As <strong>fotos e vídeos reais</strong> deste anúncio abrem na Biblioteca de Anúncios do Facebook.<br><span class="hint">Importe a oferta (➕ Biblioteca) e anexe o criativo pra vê-lo aqui.</span></div>`;
+
+  // valor real ou "ver na biblioteca"
+  const V = (val) => (val !== undefined && val !== null && val !== "" ? val : `<span class="fb-unk">ver na biblioteca ↗</span>`);
+  const ticket = saved?.price ? "R$ " + (+saved.price).toFixed(2).replace(".", ",") : null;
+  const days = saved && saved.firstSeen ? Math.max(1, Math.round((Date.now() - new Date(saved.firstSeen + "T12:00:00")) / 86400000)) + " dias" : null;
+  const published = saved?.firstSeen ? saved.firstSeen.split("-").reverse().join("/") : null;
+  const libUrl = s.url;
+  const linkTile = (label, href, icon) =>
+    href ? `<a class="fb-link" href="${escHtml(href)}" target="_blank" rel="noopener">${icon} ${label} ↗</a>`
+         : `<a class="fb-link" href="${escHtml(libUrl)}" target="_blank" rel="noopener">${icon} ${label} <span class="fb-unk">(na biblioteca)</span></a>`;
+
+  const body = `<div class="modal fb-modal" role="dialog" aria-label="Prévia da oferta">
+    <button class="modal-close" data-fb-close aria-label="Fechar">✕</button>
+    <div class="fb-head">
+      <div class="fb-avatar">${emoji}</div>
+      <div class="fb-adname">
+        <strong>${escHtml(saved?.advertiser || "Anunciante")}</strong>
+        <span>${escHtml(s.q)}</span>
+      </div>
+      ${st ? `<span class="chip ${st.cls}">${st.label}</span>` : `<span class="chip chip-watch">🔎 ativo agora</span>`}
+    </div>
+
+    <div class="fb-cols">
+      <div class="fb-left">
+        ${carousel}
+        <div class="fb-links">
+          ${linkTile("Página no Facebook", saved?.fbPage, "📘")}
+          ${linkTile("Site do anunciante", saved?.site, "🌐")}
+          <button class="fb-link" data-fb-creative="${saved?.creative ? escHtml(saved.creative) : ""}">🎬 Melhor criativo ${saved?.creative ? "" : '<span class="fb-unk">(anexe / na biblioteca)</span>'}</button>
+          <a class="fb-link primary" href="${escHtml(libUrl)}" target="_blank" rel="noopener" data-fb-lib>🔎 Ver anúncios reais na Biblioteca do Facebook ↗</a>
+        </div>
+      </div>
+      <div class="fb-right">
+        <h4>Descrição do anunciante</h4>
+        <p class="fb-desc">${saved?.desc ? escHtml(saved.desc) : `<span class="fb-unk">A copy que o anunciante escreveu aparece na Biblioteca do Facebook. Importe a oferta pra salvar aqui.</span>`}</p>
+        <h4>Informações</h4>
+        <div class="fb-tiles">
+          <div><span>Status</span><b>${st ? st.label : "🔎 ativo agora"}</b></div>
+          <div><span>Formato</span><b>${V(saved?.format)}</b></div>
+          <div><span>Idioma</span><b>${V(saved?.lang)}</b></div>
+          <div><span>Nicho</span><b>${escHtml(nicheName)}</b></div>
+          <div><span>Tem VSL?</span><b>${isVsl === null ? '<span class="fb-unk">ver ↗</span>' : (isVsl ? "Sim ✅" : "Não")}</b></div>
+          <div><span>Nº de anúncios</span><b>${V(saved?.ads)}</b></div>
+          <div><span>Dias rodando</span><b>${V(days)}</b></div>
+          <div><span>Ticket</span><b class="fb-ticket">${V(ticket)}</b></div>
+          <div><span>País</span><b>${escHtml(country)}</b></div>
+          <div><span>Publicado em</span><b>${V(published)}</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="fb-foot">
+      <button class="btn btn-primary btn-sm" data-fb-add="${i}">➕ Adicionar à Biblioteca</button>
+      <button class="btn btn-ghost btn-sm" data-fb-close>Fechar</button>
+    </div>
+  </div>`;
+
+  let modal = document.getElementById("opPreviewModal");
+  if (modal) modal.remove();
+  modal = document.createElement("div");
+  modal.className = "modal-backdrop";
+  modal.id = "opPreviewModal";
+  modal.innerHTML = body;
+  document.body.appendChild(modal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal || e.target.closest("[data-fb-close]")) return modal.remove();
+    if (e.target.closest("[data-fb-lib]")) { s.opened = true; renderOpQueue(); }
+    const add = e.target.closest("[data-fb-add]");
+    if (add) { modal.remove(); if (window.libAddFromSearch) window.libAddFromSearch(s.q, s.url, country); }
+    const cre = e.target.closest("[data-fb-creative]");
+    if (cre) {
+      const url = cre.dataset.fbCreative;
+      if (!url) { window.open(libUrl, "_blank", "noopener"); return; }
+      showCreativeViewer(url);
+    }
+  });
+}
+
+// visualizador do criativo na tela + botão de baixar
+function showCreativeViewer(url) {
+  let v = document.getElementById("creativeViewer");
+  if (v) v.remove();
+  v = document.createElement("div");
+  v.className = "modal-backdrop";
+  v.id = "creativeViewer";
+  v.innerHTML = `<div class="modal" style="max-width:640px;text-align:center">
+    <button class="modal-close" data-cv-close aria-label="Fechar">✕</button>
+    <h3 style="margin:0 0 12px">Melhor criativo</h3>
+    <img src="${escHtml(url)}" alt="criativo" style="max-width:100%;border-radius:12px;max-height:70vh" onerror="this.replaceWith(Object.assign(document.createElement('p'),{textContent:'Não consegui carregar — abra o link direto.',className:'hint'}))">
+    <div class="form-actions" style="justify-content:center;margin-top:14px">
+      <button class="btn btn-primary btn-sm" data-cv-dl>⬇ Baixar criativo</button>
+      <a class="btn btn-ghost btn-sm" href="${escHtml(url)}" target="_blank" rel="noopener">Abrir original ↗</a>
+      <button class="btn btn-ghost btn-sm" data-cv-close>Fechar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(v);
+  v.addEventListener("click", async (e) => {
+    if (e.target === v || e.target.closest("[data-cv-close]")) return v.remove();
+    if (e.target.closest("[data-cv-dl]")) {
+      try {
+        const r = await fetch(url); const b = await r.blob();
+        const a = document.createElement("a"); a.href = URL.createObjectURL(b);
+        a.download = "criativo-" + Date.now() + (b.type.includes("png") ? ".png" : ".jpg");
+        a.click(); URL.revokeObjectURL(a.href); toast("Criativo baixado 🎬");
+      } catch { window.open(url, "_blank", "noopener"); }
+    }
+  });
+}
+window.openOpPreview = openOpPreview;
 
 function renderOpSaved() {
   const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
