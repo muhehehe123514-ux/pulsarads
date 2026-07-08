@@ -36,6 +36,14 @@ cp .env.example .env   # preencha os valores
 npm start
 ```
 
+## Banco de dados permanente (contas e planos que nunca se perdem)
+As contas (login) e o plano ficam num **Upstash Redis** (grátis, permanente). Sem ele, o backend usa um arquivo local que reseta a cada deploy.
+1. Crie conta grátis em **upstash.com** (login com GitHub).
+2. **Create Database** → Redis → região mais perto (ex.: São Paulo/US) → Free.
+3. Na página do banco, copie **UPSTASH_REDIS_REST_URL** e **UPSTASH_REDIS_REST_TOKEN**.
+4. No Render → seu serviço → **Environment**, adicione essas duas variáveis. Salve (redeploy automático).
+5. Confira em `GET /` que aparece `"db":"upstash"`.
+
 ## Observações honestas
 - No plano **free do Render**, o disco é efêmero (o `grants.json` reseta em novos deploys e o serviço "dorme" após inatividade — a 1ª chamada depois de dormir demora uns segundos). Como o **navegador do cliente também guarda o plano** ao confirmar, isso é suficiente nesta escala. Pra algo robusto (multi-dispositivo garantido, histórico), troque o `grants.json` por um banco (ex.: Postgres free do Render).
 - O modelo de contas do site é por navegador (localStorage). O backend casa o pagamento com o **usuário** informado no checkout, então o cliente precisa pagar com o mesmo usuário que usa no site.
