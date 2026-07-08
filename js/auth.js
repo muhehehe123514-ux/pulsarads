@@ -119,6 +119,19 @@ function isAdmin() {
 }
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
+// ---------- Backend de contas (quando configurado em js/config.js) ----------
+const BK = () => (window.PULSAR_BACKEND || "").replace(/\/$/, "");
+const PLANC_KEY = "pulsar_planc"; // cache do plano vindo do servidor
+const getPlanCache = () => { try { return JSON.parse(localStorage.getItem(PLANC_KEY) || "null"); } catch { return null; } };
+function setPlanCache(user, plan, paidUntil) {
+  localStorage.setItem(PLANC_KEY, JSON.stringify({ user, plan: plan || "free", paidUntil: paidUntil || null }));
+}
+async function apiPost(path, body) {
+  const r = await fetch(BK() + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  let data = {}; try { data = await r.json(); } catch {}
+  return { ok: r.ok, status: r.status, data };
+}
+
 // migração: contas antigas tinham só paidUntil (= Pro)
 function migrateUsers() {
   const users = loadUsers();
@@ -130,15 +143,21 @@ function migrateUsers() {
 }
 
 // "free" | "pro" | "max" — admin conta como max vitalício
+function planActiveRec(rec) {
+  if (!rec || !rec.plan || rec.plan === "free" || !rec.paidUntil) return false;
+  return rec.paidUntil === "vida" || todayStr() < rec.paidUntil;
+}
 function planOf() {
   if (isAdmin()) return "max";
   const u = currentUser();
   if (!u) return "free";
+  // com backend: o plano vem do servidor (cacheado localmente)
+  if (BK()) {
+    const c = getPlanCache();
+    return c && c.user === u && planActiveRec(c) ? c.plan : "free";
+  }
   const rec = loadUsers()[u];
-  if (!rec?.plan || !rec.paidUntil) return "free";
-  // acesso vale até o último dia pago; no dia seguinte já bloqueia
-  if (rec.paidUntil === "vida" || todayStr() < rec.paidUntil) return rec.plan;
-  return "free";
+  return planActiveRec(rec) ? rec.plan : "free";
 }
 function isPro() {
   return planOf() !== "free";
@@ -182,10 +201,25 @@ $("#registerForm").addEventListener("submit", async (e) => {
   const pass2 = $("#regPass2").value;
   if (!/^[a-z0-9_.-]{3,20}$/.test(user)) return (err.textContent = "Usuário: 3 a 20 caracteres (letras, números, _ . -).");
   if (user === ADMIN_USER) return (err.textContent = "Esse nome de usuário é reservado. Escolha outro.");
-  const users = loadUsers();
-  if (users[user]) return (err.textContent = "Já existe uma conta com esse nome neste navegador — use a aba Entrar.");
   if (pass.length < 6) return (err.textContent = "A senha precisa ter pelo menos 6 caracteres.");
   if (pass !== pass2) return (err.textContent = "As senhas não conferem.");
+
+  // COM BACKEND: conta fica no servidor (nunca se perde, funciona em qualquer aparelho)
+  if (BK()) {
+    err.textContent = "Criando conta…";
+    try {
+      const { ok, data } = await apiPost("/api/register", { user, pass });
+      if (!ok) return (err.textContent = data.error || "Não consegui criar a conta agora.");
+      setSession({ user, token: data.token, ts: Date.now() });
+      setPlanCache(user, data.plan, data.paidUntil);
+      toast(`Conta criada! Bem-vindo(a), ${user} 🚀`);
+      return enterApp();
+    } catch { return (err.textContent = "Servidor indisponível — verifique a internet e tente de novo."); }
+  }
+
+  // sem backend: modo local (por navegador)
+  const users = loadUsers();
+  if (users[user]) return (err.textContent = "Já existe uma conta com esse nome neste navegador — use a aba Entrar.");
   const hash = await pbkdf2Hex(pass, SALT_PREFIX + user);
   users[user] = { hash, created: new Date().toISOString().slice(0, 10), plan: null, paidUntil: null };
   saveUsers(users);
@@ -203,6 +237,7 @@ $("#loginForm").addEventListener("submit", async (e) => {
   const pass = $("#loginPass").value;
   if (!user || !pass) return;
   const hash = await pbkdf2Hex(pass, SALT_PREFIX + user);
+  // admin continua sendo verificado localmente (conta fixa embutida no código)
   if (user === ADMIN_USER) {
     if (hash === ADMIN_HASH) {
       setSession({ user, ts: Date.now() });
@@ -211,6 +246,21 @@ $("#loginForm").addEventListener("submit", async (e) => {
     }
     return (err.textContent = "Senha incorreta.");
   }
+
+  // COM BACKEND: login contra o servidor (funciona de qualquer navegador/aparelho)
+  if (BK()) {
+    err.textContent = "Entrando…";
+    try {
+      const { ok, data } = await apiPost("/api/login", { user, pass });
+      if (!ok) return (err.textContent = data.error || "Não consegui entrar agora.");
+      setSession({ user, token: data.token, ts: Date.now() });
+      setPlanCache(user, data.plan, data.paidUntil);
+      toast(`Bem-vindo(a) de volta, ${user} ⚡`);
+      return enterApp();
+    } catch { return (err.textContent = "Servidor indisponível — verifique a internet e tente de novo."); }
+  }
+
+  // sem backend: modo local
   const rec = loadUsers()[user];
   if (!rec) return (err.textContent = "Conta não encontrada NESTE navegador. As contas ficam salvas no aparelho/navegador onde foram criadas — entre pelo mesmo, ou crie de novo aqui.");
   if (rec.hash !== hash) return (err.textContent = "Senha incorreta.");
@@ -354,6 +404,22 @@ document.body.addEventListener("click", async (e) => {
     const code = (input.value || "").trim().toUpperCase();
     if (!code) return toast("Digite o código primeiro 🔑");
     const user = currentUser();
+
+    // COM BACKEND: valida e libera no servidor (durável, em qualquer aparelho)
+    if (BK()) {
+      try {
+        const { ok, data } = await apiPost("/api/activate", { user, code });
+        if (!ok) return toast(data.error || "Código inválido 😕");
+        setPlanCache(user, data.plan, data.paidUntil);
+        const p = PLAN_INFO[data.plan] || PLAN_INFO.pro;
+        toast(`${p.emoji} Plano ${p.label} ativado! Bom jogo.`);
+        $("#plansModal")?.remove();
+        renderUserChip(); applyGating();
+        if (window.renderTokenMeter) window.renderTokenMeter();
+      } catch { toast("Servidor indisponível — tente de novo 😕"); }
+      return;
+    }
+
     const now = new Date();
     const months = [0, -1].map((off) => {
       const d = new Date(now.getFullYear(), now.getMonth() + off, 1);
@@ -508,14 +574,47 @@ window.addEventListener("hashchange", () => {
 });
 setInterval(() => {
   if (getSession()) { applyGating(); renderUserChip(); if (window.renderTokenMeter) window.renderTokenMeter(); }
+  refreshPlanFromServer();
 }, 60000);
+
+// mantém o plano em dia com o servidor (renovação/expiração/revogação)
+async function refreshPlanFromServer() {
+  const s = getSession();
+  if (!BK() || !s || s.user === ADMIN_USER) return;
+  try {
+    const r = await fetch(BK() + "/api/status?user=" + encodeURIComponent(s.user));
+    const d = await r.json();
+    setPlanCache(s.user, d.plan, d.paidUntil);
+    applyGating(); renderUserChip();
+    if (window.renderTokenMeter) window.renderTokenMeter();
+  } catch {}
+}
+
+// valida a sessão no servidor pelo token (sessão durável entre aparelhos)
+async function bootSession() {
+  const s = getSession();
+  if (!s) {
+    document.body.classList.add("auth-locked");
+    $("#authScreen").hidden = false;
+    if (location.hash === "#admin") location.hash = "";
+    return;
+  }
+  // admin ou modo local: entra direto
+  if (s.user === ADMIN_USER || !BK() || !s.token) { enterApp(); return; }
+  // backend: confirma quem é o dono do token e pega o plano atual
+  enterApp(); // entra já com o cache pra não travar; ajusta ao responder
+  try {
+    const { ok, data } = await apiPost("/api/session", { token: s.token });
+    if (ok && data.user) {
+      setPlanCache(data.user, data.plan, data.paidUntil);
+      applyGating(); renderUserChip();
+      if (window.renderTokenMeter) window.renderTokenMeter();
+    }
+    // se o token for inválido (ok=false), NÃO desconecta à força:
+    // mantém a sessão local; o cliente pode refazer login quando quiser.
+  } catch { /* servidor offline: segue com o cache — nunca desconecta sozinho */ }
+}
 
 // ---------- Boot ----------
 migrateUsers();
-if (getSession()) {
-  enterApp();
-} else {
-  document.body.classList.add("auth-locked");
-  $("#authScreen").hidden = false;
-  if (location.hash === "#admin") location.hash = "";
-}
+bootSession();

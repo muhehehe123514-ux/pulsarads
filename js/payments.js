@@ -45,11 +45,16 @@
       const r = await fetch(b + "/api/status?user=" + encodeURIComponent(user));
       const d = await r.json();
       if (d.plan && d.plan !== "free" && d.paidUntil) {
-        const users = loadUsers();
-        if (!users[user]) users[user] = { hash: "", created: new Date().toISOString().slice(0, 10) };
-        users[user].plan = d.plan;
-        users[user].paidUntil = d.paidUntil;
-        saveUsers(users);
+        // com backend: guarda no cache de plano; sem backend: no store local
+        if (typeof setPlanCache === "function" && (window.PULSAR_BACKEND || "")) {
+          setPlanCache(user, d.plan, d.paidUntil);
+        } else {
+          const users = loadUsers();
+          if (!users[user]) users[user] = { hash: "", created: new Date().toISOString().slice(0, 10) };
+          users[user].plan = d.plan;
+          users[user].paidUntil = d.paidUntil;
+          saveUsers(users);
+        }
         localStorage.removeItem("pulsar_pending_plan");
         document.getElementById("plansModal")?.remove();
         if (typeof applyGating === "function") applyGating();
