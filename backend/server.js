@@ -137,10 +137,11 @@ async function effectivePlan(name) {
 
 // ============================================================
 const app = express();
-app.use(cors({ origin: FRONTEND_ORIGIN === "*" ? true : FRONTEND_ORIGIN }));
+// reflete qualquer origem (o site pode estar no GitHub Pages, Netlify, domínio próprio…)
+app.use(cors({ origin: true }));
 app.use(express.json());
 
-app.get("/", (_req, res) => res.json({ ok: true, service: "pulsarads-backend", version: 3, mp: !!client, db: hasDB ? "upstash" : "file", durable: true }));
+app.get("/", (_req, res) => res.json({ ok: true, service: "pulsarads-backend", version: 4, mp: !!client, db: hasDB ? "upstash" : "file", durable: true, multiDomain: true }));
 
 const validUser = (u) => /^[a-z0-9_.-]{3,20}$/.test(u);
 
@@ -217,12 +218,14 @@ app.post("/api/create-preference", async (req, res) => {
     const plan = req.body.plan === "max" ? "max" : "pro";
     if (!validUser(user)) return res.status(400).json({ error: "usuário inválido" });
     const p = PLANS[plan];
+    // volta pro domínio de onde o cliente veio (GitHub Pages, Netlify, etc.)
+    const back = /^https?:\/\//.test(req.body.back || "") ? req.body.back.split("#")[0] : FRONT_APP;
     const result = await new Preference(client).create({
       body: {
         items: [{ title: p.title, quantity: 1, currency_id: "BRL", unit_price: p.price }],
         external_reference: `${user}|${plan}`,
         payment_methods: { installments: 1 },
-        back_urls: { success: `${FRONT_APP}#pago`, pending: `${FRONT_APP}#pendente`, failure: `${FRONT_APP}#falhou` },
+        back_urls: { success: `${back}#pago`, pending: `${back}#pendente`, failure: `${back}#falhou` },
         auto_return: "approved",
         notification_url: PUBLIC_URL ? `${PUBLIC_URL}/api/webhook` : undefined,
       },

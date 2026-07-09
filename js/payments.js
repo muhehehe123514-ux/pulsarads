@@ -21,7 +21,7 @@
       const r = await fetch(b + "/api/create-preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user, plan }),
+        body: JSON.stringify({ user, plan, back: location.href.split("#")[0] }),
       });
       const d = await r.json();
       if (d.init_point) {
