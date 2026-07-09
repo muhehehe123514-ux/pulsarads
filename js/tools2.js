@@ -167,69 +167,79 @@ $("#opSearchList").addEventListener("click", (e) => {
   if (prev) openOpPreview(+prev.dataset.opPrev);
 });
 
-// ---------- Prévia da oferta estilo Biblioteca de Anúncios do Facebook ----------
+// ---------- Prévia estilo Biblioteca de Anúncios do Facebook ----------
+// abre pelo Explorador (índice da fila)
 function openOpPreview(i) {
   const s = opQueue[i];
   if (!s) return;
   const offers = typeof loadOffers === "function" ? loadOffers() : [];
   const saved = offers.find((o) => o.name.trim().toLowerCase() === s.q.trim().toLowerCase()) || null;
+  const o = saved
+    ? { ...saved, libUrl: s.url }
+    : { name: s.q, niche: s.niche, country: s.country, libUrl: s.url, _live: true };
+  renderPreviewModal(o, { onSeen: () => { s.opened = true; renderOpQueue(); } });
+}
 
-  const nicheIdx = saved && saved.niche >= 0 ? saved.niche : s.niche;
-  const nicheName = nicheIdx >= 0 && NICHES[nicheIdx] ? NICHES[nicheIdx].name : "—";
+// renderizador genérico — aceita uma oferta com URLs de imagem REAIS
+// (avatarUrl, imgUrls[]) vindas do espelhamento da Biblioteca do Facebook
+function renderPreviewModal(o, ctx = {}) {
+  const nicheIdx = (o.niche != null && o.niche >= 0) ? o.niche : -1;
+  const nicheName = nicheIdx >= 0 && NICHES[nicheIdx] ? NICHES[nicheIdx].name : (o.nicheName || "—");
   const emoji = typeof NICHE_EMOJI !== "undefined" && nicheIdx >= 0 ? (NICHE_EMOJI[nicheIdx] || "🔥") : "🔥";
-  const st = saved && typeof LIB_STATUS !== "undefined" ? (LIB_STATUS[saved.status] || LIB_STATUS.observando) : null;
-  const country = saved?.country || s.country || "BR";
-  const isVsl = saved ? /vsl/i.test(saved.funnel || "") : null;
+  const st = (typeof LIB_STATUS !== "undefined" && o.status && LIB_STATUS[o.status]) ? LIB_STATUS[o.status] : (o._live ? { label: "🔎 ativo agora", cls: "chip-watch" } : null);
+  const country = o.country || "BR";
+  const isVsl = o.hasVsl != null ? o.hasVsl : (o.funnel != null ? /vsl/i.test(o.funnel || "") : null);
+  const libUrl = o.libUrl || o.url || (typeof adLibUrl === "function" ? adLibUrl(o.name) : "https://www.facebook.com/ads/library/");
 
-  // imagens do produto (carrossel) — usa as que estiverem salvas
+  // imagens reais: URLs espelhadas ou imagem da galeria
   const imgs = [];
-  if (saved?.img && typeof imgById === "function") { const r = imgById(saved.img); if (r) imgs.push(r.dataUrl); }
+  if (o.imgUrls && o.imgUrls.length) imgs.push(...o.imgUrls);
+  else if (o.img && typeof imgById === "function") { const r = imgById(o.img); if (r) imgs.push(r.dataUrl); }
   const carousel = imgs.length
-    ? `<div class="fb-carousel">${imgs.map((u) => `<div class="fb-slide"><img src="${u}" alt="criativo"></div>`).join("")}</div>`
-    : `<div class="fb-noimg">📷🎬 As <strong>fotos e vídeos reais</strong> deste anúncio abrem na Biblioteca de Anúncios do Facebook.<br><span class="hint">Importe a oferta (➕ Biblioteca) e anexe o criativo pra vê-lo aqui.</span></div>`;
+    ? `<div class="fb-carousel">${imgs.map((u) => `<div class="fb-slide"><img src="${escHtml(u)}" alt="criativo do anúncio" loading="lazy" data-fb-shot="${escHtml(u)}"></div>`).join("")}</div>${imgs.length > 1 ? `<div class="fb-count">🖼️ ${imgs.length} criativos — arraste ↔ (clique pra ampliar/baixar)</div>` : `<div class="fb-count">clique pra ampliar/baixar</div>`}`
+    : `<div class="fb-noimg">📷🎬 Sem imagem ainda.<br><span class="hint">Use o botão <strong>🪞 Espelhar anúncio</strong> na Biblioteca do Facebook pra trazer as fotos, o avatar e o nome reais pra cá.</span></div>`;
 
-  // valor real ou "ver na biblioteca"
   const V = (val) => (val !== undefined && val !== null && val !== "" ? val : `<span class="fb-unk">ver na biblioteca ↗</span>`);
-  const ticket = saved?.price ? "R$ " + (+saved.price).toFixed(2).replace(".", ",") : null;
-  const days = saved && saved.firstSeen ? Math.max(1, Math.round((Date.now() - new Date(saved.firstSeen + "T12:00:00")) / 86400000)) + " dias" : null;
-  const published = saved?.firstSeen ? saved.firstSeen.split("-").reverse().join("/") : null;
-  const libUrl = s.url;
+  const ticket = o.price ? "R$ " + (+o.price).toFixed(2).replace(".", ",") : null;
+  const days = o.firstSeen ? Math.max(1, Math.round((Date.now() - new Date(o.firstSeen + "T12:00:00")) / 86400000)) + " dias" : (o.days || null);
+  const published = o.firstSeen ? o.firstSeen.split("-").reverse().join("/") : (o.published || null);
+  const avatarHtml = o.avatarUrl ? `<img src="${escHtml(o.avatarUrl)}" alt="anunciante">` : emoji;
   const linkTile = (label, href, icon) =>
     href ? `<a class="fb-link" href="${escHtml(href)}" target="_blank" rel="noopener">${icon} ${label} ↗</a>`
          : `<a class="fb-link" href="${escHtml(libUrl)}" target="_blank" rel="noopener">${icon} ${label} <span class="fb-unk">(na biblioteca)</span></a>`;
+  const creative = o.creative || imgs[0] || "";
 
   const body = `<div class="modal fb-modal" role="dialog" aria-label="Prévia da oferta">
     <button class="modal-close" data-fb-close aria-label="Fechar">✕</button>
     <div class="fb-head">
-      <div class="fb-avatar">${emoji}</div>
+      <div class="fb-avatar">${avatarHtml}</div>
       <div class="fb-adname">
-        <strong>${escHtml(saved?.advertiser || "Anunciante")}</strong>
-        <span>${escHtml(s.q)}</span>
+        <strong>${escHtml(o.advertiser || "Anunciante")}</strong>
+        <span>${escHtml(o.name || "")}</span>
       </div>
       ${st ? `<span class="chip ${st.cls}">${st.label}</span>` : `<span class="chip chip-watch">🔎 ativo agora</span>`}
     </div>
-
     <div class="fb-cols">
       <div class="fb-left">
         ${carousel}
         <div class="fb-links">
-          ${linkTile("Página no Facebook", saved?.fbPage, "📘")}
-          ${linkTile("Site do anunciante", saved?.site, "🌐")}
-          <button class="fb-link" data-fb-creative="${saved?.creative ? escHtml(saved.creative) : ""}">🎬 Melhor criativo ${saved?.creative ? "" : '<span class="fb-unk">(anexe / na biblioteca)</span>'}</button>
+          ${linkTile("Página no Facebook", o.fbPage, "📘")}
+          ${linkTile("Site do anunciante", o.site, "🌐")}
+          <button class="fb-link" data-fb-creative="${escHtml(creative)}">🎬 Melhor criativo ${creative ? "" : '<span class="fb-unk">(espelhe / na biblioteca)</span>'}</button>
           <a class="fb-link primary" href="${escHtml(libUrl)}" target="_blank" rel="noopener" data-fb-lib>🔎 Ver anúncios reais na Biblioteca do Facebook ↗</a>
         </div>
       </div>
       <div class="fb-right">
         <h4>Descrição do anunciante</h4>
-        <p class="fb-desc">${saved?.desc ? escHtml(saved.desc) : `<span class="fb-unk">A copy que o anunciante escreveu aparece na Biblioteca do Facebook. Importe a oferta pra salvar aqui.</span>`}</p>
+        <p class="fb-desc">${o.desc ? escHtml(o.desc) : `<span class="fb-unk">Espelhe o anúncio pra trazer a copy que o anunciante escreveu.</span>`}</p>
         <h4>Informações</h4>
         <div class="fb-tiles">
           <div><span>Status</span><b>${st ? st.label : "🔎 ativo agora"}</b></div>
-          <div><span>Formato</span><b>${V(saved?.format)}</b></div>
-          <div><span>Idioma</span><b>${V(saved?.lang)}</b></div>
+          <div><span>Formato</span><b>${V(o.format)}</b></div>
+          <div><span>Idioma</span><b>${V(o.lang)}</b></div>
           <div><span>Nicho</span><b>${escHtml(nicheName)}</b></div>
           <div><span>Tem VSL?</span><b>${isVsl === null ? '<span class="fb-unk">ver ↗</span>' : (isVsl ? "Sim ✅" : "Não")}</b></div>
-          <div><span>Nº de anúncios</span><b>${V(saved?.ads)}</b></div>
+          <div><span>Nº de anúncios</span><b>${V(o.ads)}</b></div>
           <div><span>Dias rodando</span><b>${V(days)}</b></div>
           <div><span>Ticket</span><b class="fb-ticket">${V(ticket)}</b></div>
           <div><span>País</span><b>${escHtml(country)}</b></div>
@@ -238,7 +248,8 @@ function openOpPreview(i) {
       </div>
     </div>
     <div class="fb-foot">
-      <button class="btn btn-primary btn-sm" data-fb-add="${i}">➕ Adicionar à Biblioteca</button>
+      <button class="btn btn-primary btn-sm" data-fb-modelar>✨ Modelar esta oferta</button>
+      <button class="btn btn-ghost btn-sm" data-fb-add>➕ Adicionar à Biblioteca</button>
       <button class="btn btn-ghost btn-sm" data-fb-close>Fechar</button>
     </div>
   </div>`;
@@ -251,19 +262,23 @@ function openOpPreview(i) {
   modal.innerHTML = body;
   document.body.appendChild(modal);
 
+  // guarda a oferta na Biblioteca (retorna o índice) — reidrata se já existir
+  const ensureInLibrary = () => (window.libAddOffer ? window.libAddOffer(o) : (window.libAddFromSearch && window.libAddFromSearch(o.name, libUrl, country), -1));
+
   modal.addEventListener("click", (e) => {
     if (e.target === modal || e.target.closest("[data-fb-close]")) return modal.remove();
-    if (e.target.closest("[data-fb-lib]")) { s.opened = true; renderOpQueue(); }
-    const add = e.target.closest("[data-fb-add]");
-    if (add) { modal.remove(); if (window.libAddFromSearch) window.libAddFromSearch(s.q, s.url, country); }
+    if (e.target.closest("[data-fb-lib]")) { if (ctx.onSeen) ctx.onSeen(); return; }
+    const shot = e.target.closest("[data-fb-shot]");
+    if (shot) { showCreativeViewer(shot.dataset.fbShot); return; }
     const cre = e.target.closest("[data-fb-creative]");
-    if (cre) {
-      const url = cre.dataset.fbCreative;
-      if (!url) { window.open(libUrl, "_blank", "noopener"); return; }
-      showCreativeViewer(url);
-    }
+    if (cre) { const url = cre.dataset.fbCreative; if (url) showCreativeViewer(url); else window.open(libUrl, "_blank", "noopener"); return; }
+    const add = e.target.closest("[data-fb-add]");
+    if (add) { const idx = ensureInLibrary(); modal.remove(); if (idx >= 0 && window.openOfferModal) { location.hash = "#biblioteca"; window.openOfferModal(idx); } return; }
+    const mod = e.target.closest("[data-fb-modelar]");
+    if (mod) { const idx = ensureInLibrary(); modal.remove(); if (idx >= 0 && window.startModelagem) window.startModelagem(idx); }
   });
 }
+window.renderPreviewModal = renderPreviewModal;
 
 // visualizador do criativo na tela + botão de baixar
 function showCreativeViewer(url) {

@@ -889,17 +889,18 @@
 
         <div class="card">
           <div class="card-head-row">
-            <h3>⚡ Importação rápida da Ad Library</h3>
-            <a href="#" id="bookmarkletLink" class="btn btn-primary btn-sm" title="Arraste este botão pra sua barra de favoritos">📎 Pulsar Import</a>
+            <h3>🪞 Espelhar anúncio real da Biblioteca do Facebook</h3>
+            <a href="#" id="bookmarkletLink" class="btn btn-primary btn-sm" title="Arraste este botão pra sua barra de favoritos">🪞 Espelhar anúncio</a>
           </div>
           <ol class="steps-list">
-            <li><strong>Arraste</strong> o botão "📎 Pulsar Import" pra sua barra de favoritos (Ctrl+Shift+B mostra a barra).</li>
-            <li>Abra uma pesquisa na biblioteca de anúncios (use o 🔥 Explorador) e <strong>clique no favorito</strong> — ele copia os dados da página.</li>
-            <li>Volte aqui e <strong>cole no campo abaixo</strong>: a oferta entra/atualiza sozinha com contagem de anúncios e data.</li>
+            <li><strong>Arraste</strong> o botão "🪞 Espelhar anúncio" pra sua barra de favoritos (Ctrl+Shift+B mostra a barra).</li>
+            <li>Abra a <a href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=BR&media_type=all" target="_blank" rel="noopener" class="link-inline">Biblioteca de Anúncios do Facebook ↗</a>, ache um anúncio bom e <strong>clique no favorito "🪞 Espelhar anúncio"</strong>.</li>
+            <li>O PulsarAds abre sozinho com o anúncio na <strong>prévia</strong> — <strong>imagens reais, foto de perfil e nome do anunciante</strong>. Daí é só <strong>Adicionar à Biblioteca</strong> ou <strong>✨ Modelar</strong>.</li>
           </ol>
-          <div class="pix-row" style="margin-top:14px">
-            <input type="text" id="libPaste" placeholder='Cole aqui o que o bookmarklet copiou ({"q":"bolo no pote",…})' />
-            <button class="btn btn-ghost btn-sm" id="btnLibPaste">Importar 📥</button>
+          <p class="hint">Se o navegador bloquear a aba nova, o botão te dá um link — cole ele aqui embaixo:</p>
+          <div class="pix-row" style="margin-top:8px">
+            <input type="text" id="libPaste" placeholder="Cole aqui o link do espelhamento (…#mirror=…) ou os dados copiados" />
+            <button class="btn btn-ghost btn-sm" id="btnLibPaste">Espelhar 🪞</button>
           </div>
         </div>
 
@@ -1111,5 +1112,6 @@
   <script src="js/auth.js"></script>
   <script src="js/tokens.js"></script>
   <script src="js/payments.js"></script>
+  <script src="js/mirror.js"></script>
 </body>
 </html>

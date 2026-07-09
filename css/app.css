@@ -787,10 +787,13 @@ body.auth-locked .app-shell, body.auth-locked .app-topbar { visibility: hidden; 
 .fb-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-right: 30px; }
 .fb-avatar {
   width: 50px; height: 50px; flex: none; border-radius: 50%;
-  display: grid; place-items: center; font-size: 26px;
+  display: grid; place-items: center; font-size: 26px; overflow: hidden;
   background: linear-gradient(135deg, rgba(139,92,246,0.3), rgba(56,189,248,0.2));
   border: 1px solid rgba(139, 92, 246, 0.4);
 }
+.fb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.fb-slide img { cursor: zoom-in; }
+.fb-count { font-size: 11.5px; color: var(--muted); margin: 6px 0 2px; text-align: center; }
 .fb-adname { min-width: 0; flex: 1; }
 .fb-adname strong { display: block; font-size: 16px; }
 .fb-adname span { font-size: 12.5px; color: var(--muted); }
