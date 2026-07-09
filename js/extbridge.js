@@ -10,15 +10,22 @@
   window.PULSAR_EXT = false;
   const pending = {};
 
+  function markReady() {
+    if (window.PULSAR_EXT) return;
+    window.PULSAR_EXT = true;
+    document.dispatchEvent(new CustomEvent("pulsar-ext-ready"));
+  }
+
+  // sinal à prova de timing: a extensão marca data-pulsar-ext no <html>
+  function checkAttr() { if (document.documentElement.getAttribute("data-pulsar-ext") === "1") markReady(); }
+  checkAttr();
+  let n = 0;
+  const poll = setInterval(() => { checkAttr(); if (window.PULSAR_EXT || ++n > 30) clearInterval(poll); }, 400);
+
   window.addEventListener("message", (ev) => {
     const d = ev.data;
     if (!d || d.app !== "pulsarads-ext") return;
-    if (d.type === "ready") {
-      if (!window.PULSAR_EXT) {
-        window.PULSAR_EXT = true;
-        document.dispatchEvent(new CustomEvent("pulsar-ext-ready"));
-      }
-    }
+    if (d.type === "ready") markReady();
     if ((d.type === "result" || d.type === "pong") && d.reqId && pending[d.reqId]) {
       pending[d.reqId](d.ads || d);
       delete pending[d.reqId];

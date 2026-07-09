@@ -2,11 +2,19 @@
 
 Faz o que você pediu: **pesquisou oferta no PulsarAds → os anúncios reais aparecem com imagens, sozinhos**. Por baixo dos panos, esta extensão abre a **Biblioteca de Anúncios do Facebook** (que é **pública**) em abas de fundo, lê os anúncios (imagens, foto de perfil, nome do anunciante, copy, data) e devolve pro site. Ninguém precisa ir lá favoritar nada.
 
-## Instalar (1 minuto, uma vez só)
-1. Abra o Edge/Chrome em **edge://extensions** (ou **chrome://extensions**).
-2. Ligue o **Modo do desenvolvedor** (canto superior).
-3. Clique em **Carregar sem compactação** (Load unpacked) e escolha esta pasta **`extension`**.
-4. Pronto. Abra o PulsarAds → 🔥 Explorador de Ofertas → pesquise. No topo vai aparecer **"⚡ Skill de espelhamento ativa"** e os anúncios reais vêm sozinhos.
+Funciona no **Chrome** e no **Edge** (é Manifest V3, o padrão dos dois).
+
+## Instalar no CHROME (1 minuto, uma vez só)
+1. Abra **chrome://extensions**
+2. Ligue o **Modo do desenvolvedor** (canto superior direito).
+3. Clique em **Carregar sem compactação** (Load unpacked) e escolha esta pasta:
+   `C:\Users\LVLSTI\Downloads\pulsarads\extension`
+4. Pronto. Abra o PulsarAds → 🔥 Explorador de Ofertas → pesquise. No topo aparece **"⚡ Skill de espelhamento ativa"** e os anúncios reais vêm sozinhos, com imagens.
+
+## Instalar no EDGE
+Igualzinho, só que em **edge://extensions**.
+
+> Dica: deixe uma aba do Facebook aberta e logada no mesmo Chrome — assim a Biblioteca de Anúncios abre sem pedir consentimento de cookies e a leitura fica mais completa.
 
 ## Como funciona (honesto)
 - A Biblioteca de Anúncios do Facebook é **pública** — qualquer um vê os anúncios ativos. A extensão só lê o que já está visível ali, no **seu** navegador, e traz pro site. Não faz login, não mexe na sua conta, não posta nada.

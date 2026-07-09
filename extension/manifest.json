@@ -3,7 +3,7 @@
   "name": "PulsarAds Espelho",
   "version": "1.0.0",
   "description": "Espelha anúncios reais da Biblioteca de Anúncios do Facebook (pública) direto no PulsarAds — pesquisou, apareceu com imagens.",
-  "permissions": ["tabs", "scripting", "storage"],
+  "permissions": ["tabs"],
   "host_permissions": [
     "*://*.facebook.com/*",
     "*://muhehehe123514-ux.github.io/*",
