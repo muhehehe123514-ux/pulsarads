@@ -55,7 +55,33 @@ function adLibUrl(q) {
   return "https://www.facebook.com/ads/library/?" + p.toString();
 }
 
-$("#btnOpGenerate").addEventListener("click", () => {
+// adivinha o nicho de um texto (usa o dataset NICHES)
+function guessNicheIdx(text) {
+  const t = (text || "").toLowerCase();
+  let best = -1, score = 0;
+  NICHES.forEach((n, i) => {
+    let sc = 0;
+    (n.kws || []).forEach((k) => { const w = k.toLowerCase().split(" ")[0]; if (w.length > 3 && t.includes(w)) sc++; });
+    const nm = (n.name || "").toLowerCase().split(" ")[0];
+    if (nm.length > 3 && t.includes(nm)) sc += 2;
+    if (sc > score) { score = sc; best = i; }
+  });
+  return best;
+}
+// converte um anúncio espelhado pela extensão numa oferta da prévia
+function adToOffer(a, cc) {
+  const imgs = (a.imgs || []).filter(Boolean);
+  return {
+    name: a.name || a.page || "Anúncio", advertiser: a.page || "", avatarUrl: a.avatar || "",
+    imgUrls: imgs, creative: imgs[0] || "", desc: a.text || "", fbPage: a.pageUrl || "",
+    ads: a.ads ?? null, country: a.country || cc || "BR", lang: "Português", published: a.started || null,
+    libraryId: a.libraryId || "", niche: guessNicheIdx((a.name || "") + " " + (a.text || "") + " " + (a.page || "")),
+    hasVsl: /\bvsl\b|assista|v[ií]deo/i.test(a.text || ""), libUrl: a.libUrl || "", status: "escalando",
+    _mirror: true, _live: true,
+  };
+}
+
+$("#btnOpGenerate").addEventListener("click", async () => {
   const nicheVal = opNicheSel.value;
   const custom = $("#opCustomKw").value.trim();
   let kws = [];
@@ -69,13 +95,34 @@ $("#btnOpGenerate").addEventListener("click", () => {
   if (!window.canUse()) return;
   const qual = $("#opQualifier").value;
   const searches = [...kws];
-  // combina a frase de vendedor com gatilho de preço/entrega (filtro sempre ativo)
   kws.slice(0, 4).forEach((k, i) => {
     const extra = qual || QUALIFIERS_AUTO[i % QUALIFIERS_AUTO.length];
     if (!k.toLowerCase().includes(extra.toLowerCase())) searches.push(`${k} ${extra}`);
   });
   const nicheIdx = nicheVal === "custom" ? -1 : +nicheVal;
   const cc = $("#opCountry").value;
+
+  // ⚡ MODO AUTOMÁTICO: se a extensão estiver instalada, espelha os anúncios
+  // reais (com imagens) em segundo plano — sem você ir na Biblioteca do FB.
+  if (window.pulsarExtAvailable && window.pulsarExtAvailable()) {
+    $("#opScanCard").hidden = false;
+    $("#opScanProgress").textContent = "espelhando…";
+    $("#opSearchList").className = "";
+    $("#opSearchList").innerHTML = `<div class="op-loading">⚡ <strong>Skill de espelhamento ativa</strong> — abrindo a Biblioteca de Anúncios em segundo plano e trazendo os anúncios reais…<br><span class="hint">pode levar alguns segundos (uma aba de fundo por pesquisa)</span></div>`;
+    $("#opScanCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    toast("⚡ Espelhando anúncios reais…");
+    const ads = await window.pulsarExtSearch(searches.slice(0, 6), cc);
+    if (ads && ads.length) {
+      opQueue = ads.map((a) => ({ q: a.name, ad: adToOffer(a, cc), opened: false, niche: nicheIdx, country: cc }));
+      renderOpQueue();
+      toast(`🪞 ${ads.length} anúncios reais espelhados!`);
+      window.spendUse();
+      return;
+    }
+    toast("A skill não trouxe anúncios agora — mostrando o modo manual 👇");
+  }
+
+  // modo manual (sem extensão): gera as pesquisas pra abrir na Biblioteca
   opQueue = searches.slice(0, 12).map((q) => ({ q, url: adLibUrl(q), opened: false, niche: nicheIdx, country: cc }));
   $("#opScanCard").hidden = false;
   renderOpQueue();
@@ -83,6 +130,23 @@ $("#btnOpGenerate").addEventListener("click", () => {
   $("#opScanCard").scrollIntoView({ behavior: "smooth", block: "start" });
   window.spendUse();
 });
+
+// banner de status da "skill" (extensão) no topo do Explorador
+function renderExtStatus() {
+  const panel = document.getElementById("tool-ofertas");
+  if (!panel) return;
+  let el = document.getElementById("opExtStatus");
+  if (!el) { el = document.createElement("div"); el.id = "opExtStatus"; const head = panel.querySelector(".panel-head"); head ? head.after(el) : panel.prepend(el); }
+  if (window.pulsarExtAvailable && window.pulsarExtAvailable()) {
+    el.className = "ext-status on";
+    el.innerHTML = `⚡ <strong>Skill de espelhamento ativa</strong> — é só pesquisar que os anúncios reais (com imagens) aparecem sozinhos.`;
+  } else {
+    el.className = "ext-status off";
+    el.innerHTML = `💡 <strong>Quer no automático?</strong> Instale a extensão <strong>PulsarAds Espelho</strong> (1x) e a pesquisa traz os anúncios reais com imagem sozinha. <a href="https://github.com/muhehehe123514-ux/pulsarads/tree/main/extension" target="_blank" rel="noopener" class="link-inline">Como instalar ↗</a> · ou use o 🪞 Espelhar manual na Biblioteca.`;
+  }
+}
+document.addEventListener("pulsar-ext-ready", renderExtStatus);
+setTimeout(renderExtStatus, 600);
 
 function renderOpQueue() {
   const done = opQueue.filter((s) => s.opened).length;
@@ -97,7 +161,27 @@ function renderOpQueue() {
 
   list.innerHTML = opQueue
     .map((s, i) => {
-      // se essa pesquisa já virou oferta salva, mostra os dados reais dela
+      // anúncio REAL espelhado pela extensão (com imagens)
+      if (s.ad) {
+        const a = s.ad;
+        const thumb = (a.imgUrls && a.imgUrls[0]) || a.avatarUrl || "";
+        const nm = a.niche >= 0 && NICHES[a.niche] ? NICHES[a.niche].name : nicheName;
+        return `<article class="op-card${s.opened ? " seen" : ""}">
+          <div class="op-clickable" data-op-prev="${i}" title="Ver prévia do anúncio">
+            <div class="op-thumb">${thumb ? `<img src="${escHtml(thumb)}" alt="" loading="lazy" />` : emoji}<span class="op-num">🪞 REAL</span></div>
+            <div class="op-body">
+              <strong>${escHtml((a.name || "").slice(0, 60))}</strong>
+              <div class="oc-chips"><span class="chip">${escHtml(nm)}</span>${a.advertiser ? `<span class="chip chip-hot">${escHtml(a.advertiser.slice(0, 22))}</span>` : ""}</div>
+              <div class="op-mini-stats"><span>🖼️ ${(a.imgUrls || []).length} criativos</span><span>🔥 ativo</span><span>${a.country || country}</span></div>
+            </div>
+          </div>
+          <div class="op-actions">
+            <button class="btn btn-primary btn-sm" data-op-prev="${i}">👁 Prévia</button>
+            <button class="btn btn-ghost btn-sm" data-op-lib="${i}" title="Adicionar à Biblioteca">➕</button>
+          </div>
+        </article>`;
+      }
+      // pesquisa (modo manual) — se já virou oferta salva, mostra os dados reais
       const saved = offers.find((o) => o.name.trim().toLowerCase() === s.q.trim().toLowerCase());
       const img = saved?.img && typeof imgById === "function" ? imgById(saved.img) : null;
       const stats = saved
@@ -150,9 +234,10 @@ $("#opSearchList").addEventListener("click", (e) => {
   const prev = e.target.closest("[data-op-prev]");
   const save = e.target.closest("[data-op-save]");
   const lib = e.target.closest("[data-op-lib]");
-  if (lib && window.libAddFromSearch) {
+  if (lib) {
     const s = opQueue[+lib.dataset.opLib];
-    window.libAddFromSearch(s.q, s.url, s.country || $("#opCountry").value);
+    if (s.ad && window.libAddOffer) { const idx = window.libAddOffer(s.ad); location.hash = "#biblioteca"; if (window.openOfferModal) window.openOfferModal(idx); }
+    else if (window.libAddFromSearch) window.libAddFromSearch(s.q, s.url, s.country || $("#opCountry").value);
     return;
   }
   if (save) {
@@ -172,6 +257,8 @@ $("#opSearchList").addEventListener("click", (e) => {
 function openOpPreview(i) {
   const s = opQueue[i];
   if (!s) return;
+  // anúncio real espelhado pela extensão
+  if (s.ad) { renderPreviewModal(s.ad, { onSeen: () => { s.opened = true; renderOpQueue(); } }); return; }
   const offers = typeof loadOffers === "function" ? loadOffers() : [];
   const saved = offers.find((o) => o.name.trim().toLowerCase() === s.q.trim().toLowerCase()) || null;
   const o = saved
