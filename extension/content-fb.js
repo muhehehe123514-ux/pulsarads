@@ -52,6 +52,21 @@
         card = card.parentElement;
         if (card.querySelector("img, video") && (card.innerText || "").length > 120) break;
       }
+      // se parou cedo demais (antes do bloco do vídeo), expande — sem engolir outro anúncio
+      if (!card.querySelector("video")) {
+        var up = card.parentElement, lvl = 0;
+        while (up && lvl < 3) {
+          if (up.querySelector("video")) {
+            var swallows = false;
+            for (var mi = 0; mi < marks.length; mi++) {
+              if (marks[mi] !== mark && up.contains(marks[mi])) { swallows = true; break; }
+            }
+            if (!swallows) card = up;
+            break;
+          }
+          up = up.parentElement; lvl++;
+        }
+      }
       if (seenCard.indexOf(card) >= 0) return;
       seenCard.push(card);
 
@@ -120,7 +135,9 @@
       imgEls.forEach(function (im) {
         var w = im.naturalWidth || im.width || 0, h = im.naturalHeight || im.height || 0;
         var s = im.currentSrc || im.src;
-        var smallUrl = /\/[sp]\d{2,3}x\d{2,3}\//.test(s) || /_[sq]\.(jpg|png)/.test(s); // avatar de página
+        // avatar SÓ quando a URL indica dimensão pequena (s60x60…) — /s600x600/ é criativo!
+        var dimM = s.match(/\/[sp](\d{2,4})x(\d{2,4})\//);
+        var smallUrl = (dimM && +dimM[1] <= 160 && +dimM[2] <= 160) || /_[sq]\.(jpg|png)/.test(s);
         if (!avatar && (smallUrl || (w > 0 && w <= 140 && Math.abs(w - h) < 16))) { avatar = s; return; }
         if (smallUrl) return;
         if (w >= 180 || h >= 180 || (!w && !h)) cre.push({ u: s, a: w * h });

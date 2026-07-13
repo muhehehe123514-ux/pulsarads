@@ -53,9 +53,12 @@ function guessNicheIdx(text) {
   let best = -1, score = 0;
   NICHES.forEach((n, i) => {
     let sc = 0;
+    const seen = new Set();
     (n.kws || []).forEach((k) => {
-      const w = k.toLowerCase().split(" ")[0];
-      if (w.length > 3 && t.includes(w)) sc++;
+      // qualquer palavra forte da keyword conta ("apostila de violão" → violão)
+      k.toLowerCase().split(/\s+/).forEach((w) => {
+        if (w.length >= 5 && !seen.has(w) && t.includes(w)) { seen.add(w); sc += 2; }
+      });
     });
     const nm = (n.name || "").toLowerCase().split(" ")[0];
     if (nm.length > 3 && t.includes(nm)) sc += 2;
@@ -119,6 +122,9 @@ function adToOffer(a, cc) {
     cta: a.cta || "",
     domain: a.domain || "",
     headline: a.headline || "",
+    followers: a.followers || "",
+    handles: a.handles || [],
+    bio: a.bio || "",
     _mirror: true, _live: true,
   };
 }
@@ -570,9 +576,12 @@ function renderPreviewModal(o, ctx = {}) {
             <span class="fbl-ava big">${o.avatarUrl ? `<img src="${escHtml(o.avatarUrl)}" alt="">` : `<span>${emoji}</span>`}</span>
             <div>
               <b>${escHtml(advName)}</b>
+              ${(o.handles && o.handles.length) ? `<span class="fbl-subtle">${o.handles.map((h) => "@" + escHtml(h)).join(" · ")}</span>` : ""}
+              ${o.followers ? `<span class="fbl-subtle">${escHtml(o.followers)} seguidores</span>` : ""}
               ${o.libraryId ? `<span class="fbl-subtle">Identificação da biblioteca: ${escHtml(o.libraryId)}</span>` : ""}
             </div>
           </div>
+          ${o.bio ? `<p class="fbl-note" style="margin:0 0 12px"><strong style="display:block;color:#050505;margin-bottom:2px">Mais informações</strong>${escHtml(o.bio)}</p>` : ""}
           <div class="fbl-alinks">
             ${bestCreative ? `<button type="button" data-fb-best="${escHtml(bestCreative)}">🎬 Ver melhor criativo (${videos.length ? "vídeo" : "imagem"})</button>` : ""}
             ${o.site ? `<a href="${escHtml(o.site)}" target="_blank" rel="noopener">🌐 Página de vendas / VSL do anunciante ↗</a>` : ""}

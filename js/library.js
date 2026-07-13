@@ -401,12 +401,32 @@ else {
 var adsMatch = T.match(/(\\d{1,4})\\s+(?:anúncios|ads|active ads|anúncios ativos)/i);
 var ads = adsMatch ? parseInt(adsMatch[1].replace(/\\./g,'')) : null;
 
-// TICKET REAL (R$ XX,XX)
+// TICKET REAL — "R$ 27", "apenas 27,00", "por apenas 19,90", "somente 37"
 var price = null;
-var priceMatch = T.match(/R\\$\\s*(\\d{1,3}(?:[.,]\\d{1,2})?)/);
+var priceMatch = T.match(/R\\$\\s*(\\d{1,3}(?:[.,]\\d{1,2})?)/) ||
+  T.match(/por\\s+apenas\\s+(\\d{1,3}[.,]\\d{2})/i) ||
+  T.match(/(?:somente|apenas|s[óo])\\s+(\\d{1,3}[.,]\\d{2})/i);
 if(priceMatch){
   var valor = parseFloat(priceMatch[1].replace(',','.'));
   if(valor >= 1 && valor <= 9999) price = valor;
+}
+
+// SOBRE O ANUNCIANTE: seguidores, @handles e bio ("Mais informações")
+var folM = T.match(/([\\d.,]+\\s*(?:mil|mi)?)\\s*seguidores/i);
+var followers = folM ? folM[1].replace(/\\s+$/,'') : '';
+var handles = [];
+(T.match(/@[a-z0-9_.]{2,30}/gi) || []).forEach(function(h){
+  h = h.slice(1);
+  if(handles.length < 2 && handles.indexOf(h) < 0) handles.push(h);
+});
+var bio = '';
+var bioSplit = T.split(/Mais informa\\S{1,4}es/i);
+if(bioSplit[1]){
+  var bl = bioSplit[1].split('\\n');
+  for(var bi2=0; bi2<bl.length; bi2++){
+    var bt2 = bl[bi2].trim();
+    if(bt2.length > 10 && !/Sobre an[uú]ncios/i.test(bt2)){ bio = bt2.slice(0, 220); break; }
+  }
 }
 
 // IMAGENS (só do modal)
@@ -544,6 +564,7 @@ var data = {
   ads: ads, site: site, price: price, hasVsl: hasVsl,
   active: active, multiV: multiV, versions: verM ? parseInt(verM[1]) : null,
   cta: ctaM ? ctaM[1] : '', domain: domain,
+  followers: followers, handles: handles, bio: bio,
   libUrl: location.href,
   country: (location.href.match(/country=([A-Z]{2})/) || [])[1] || 'BR'
 };
@@ -628,6 +649,7 @@ window.libAddOffer = (o) => {
     versionsCount: o.versionsCount ?? null,
     multiVersions: !!o.multiVersions,
     cta: o.cta || "", domain: o.domain || "", headline: o.headline || "",
+    followers: o.followers || "", handles: o.handles || [], bio: o.bio || "",
     libUrl: o.libUrl || "",
     notes: o.notes || (o._mirror ? "🪞 Espelhada da Biblioteca do Facebook" : ""),
     firstSeen: o.firstSeen || today, lastChecked: today, fav: false,

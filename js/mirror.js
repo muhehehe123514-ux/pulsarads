@@ -15,7 +15,12 @@ Agora recebe também vídeos, ticket real, site externo, nº de anúncios.
     let best = -1, score = 0;
     NICHES.forEach((n, i) => {
       let sc = 0;
-      (n.kws || []).forEach((k) => { const w = k.toLowerCase().split(" ")[0]; if (w.length > 3 && t.includes(w)) sc++; });
+      const seen = new Set();
+      (n.kws || []).forEach((k) => {
+        k.toLowerCase().split(/\s+/).forEach((w) => {
+          if (w.length >= 5 && !seen.has(w) && t.includes(w)) { seen.add(w); sc += 2; }
+        });
+      });
       const nm = (n.name || "").toLowerCase().split(" ")[0];
       if (nm.length > 3 && t.includes(nm)) sc += 2;
       if (sc > score) { score = sc; best = i; }
@@ -67,6 +72,9 @@ Agora recebe também vídeos, ticket real, site externo, nº de anúncios.
       cta: data.cta || "",
       domain: data.domain || "",
       headline: data.headline || "",
+      followers: data.followers || "",
+      handles: data.handles || [],
+      bio: data.bio || "",
       _mirror: true, _live: true,
     };
 
