@@ -69,8 +69,10 @@ function guessNicheIdx(text) {
 // ============================================================
 function adToOffer(a, cc) {
   const imgs = (a.imgs || []).filter(Boolean);
-  const videos = (a.videos || []).filter(Boolean);
-  const creative = imgs[0] || videos[0] || "";
+  const videos = (a.videos || []).filter((u) => u && /^https?:/i.test(u)); // blob: não toca fora do FB
+  const posters = (a.posters || []).filter(Boolean);
+  if (!videos.length && !imgs.length && posters.length) imgs.push(...posters);
+  const creative = videos[0] || imgs[0] || "";
   const desc = a.text || "";
 
   // VSL: detecta por palavra-chave OU presença de vídeo
@@ -198,6 +200,21 @@ const PLAT_SVG = {
 };
 const FBL_COUNTRIES = { BR: "Brasil", US: "Estados Unidos", PT: "Portugal", MX: "México", AR: "Argentina", ES: "Espanha", ALL: "Vários países" };
 
+// "26 de mai de 2026" / "26 de maio de 2026" / "26/05/2026" → Date
+const PT_MONTHS = { jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5, jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11 };
+function parsePtDate(p) {
+  if (!p) return null;
+  const m = String(p).match(/(\d{1,2})\s+de\s+([a-zç]{3,})\.?\s+de\s+(\d{4})/i);
+  if (m) {
+    const mo = PT_MONTHS[m[2].slice(0, 3).toLowerCase()];
+    if (mo != null) return new Date(+m[3], mo, +m[1]);
+  }
+  const s = String(p).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (s) return new Date(+s[3], +s[2] - 1, +s[1]);
+  const d = new Date(p);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function fblPlatIcons(o) {
   const list = (o.platforms && o.platforms.length)
     ? o.platforms
@@ -247,13 +264,16 @@ function fblMediaHtml(o, full = false) {
 // corpo do anúncio: anunciante · copy · mídia · domínio/headline/CTA
 function fblAdBoxHtml(o, { full = false, emoji = "🔥" } = {}) {
   const ava = o.avatarUrl ? `<img src="${escHtml(o.avatarUrl)}" alt="">` : `<span>${emoji}</span>`;
+  const ctaLabel = escHtml(o.cta || "Saiba mais");
   const linkbar = (o.domain || o.cta || o.headline || o.site)
     ? `<div class="fbl-linkbar">
         <div class="fbl-linkinfo">
           ${o.domain ? `<span class="fbl-domain">${escHtml(o.domain)}</span>` : (o.site ? `<span class="fbl-domain">${escHtml(o.site.replace(/^https?:\/\//, "").split("/")[0].toUpperCase())}</span>` : "")}
           <strong class="fbl-headline">${escHtml(o.headline || o.name || "")}</strong>
         </div>
-        <span class="fbl-ctabtn">${escHtml(o.cta || "Saiba mais")}</span>
+        ${o.site
+          ? `<a class="fbl-ctabtn" href="${escHtml(o.site)}" target="_blank" rel="noopener" title="Abrir a página de destino do anúncio">${ctaLabel}</a>`
+          : `<span class="fbl-ctabtn">${ctaLabel}</span>`}
       </div>` : "";
   return `<div class="fbl-adbox">
     <div class="fbl-adhead">
@@ -352,6 +372,7 @@ $("#btnOpReset").addEventListener("click", () => {
 });
 
 $("#opSearchList").addEventListener("click", (e) => {
+  if (e.target.closest("a[href]")) return; // link real (CTA → página de destino): deixa navegar
   const prev = e.target.closest("[data-op-prev]");
   const save = e.target.closest("[data-op-save]");
   const lib = e.target.closest("[data-op-lib]");
@@ -461,8 +482,9 @@ function renderPreviewModal(o, ctx = {}) {
 
   const imgs = [];
   const videos = [];
-  if (o.imgUrls && o.imgUrls.length) imgs.push(...o.imgUrls);
-  if (o.videoUrls && o.videoUrls.length) videos.push(...o.videoUrls);
+  if (o.imgUrls && o.imgUrls.length) imgs.push(...o.imgUrls.filter(Boolean));
+  if (o.videoUrls && o.videoUrls.length) videos.push(...o.videoUrls.filter((u) => u && /^https?:/i.test(u)));
+  if (!videos.length && !imgs.length && o.videoPosters && o.videoPosters.length) imgs.push(...o.videoPosters.filter(Boolean));
   if (!imgs.length && !videos.length && o.img && typeof imgById === "function") {
     const r = imgById(o.img); if (r) imgs.push(r.dataUrl);
   }
@@ -470,19 +492,16 @@ function renderPreviewModal(o, ctx = {}) {
     ...videos.map(u => ({ url: u, type: "video" })),
     ...imgs.map(u => ({ url: u, type: "img" })),
   ];
+  // melhor criativo: o vídeo principal; sem vídeo, a maior imagem
+  const bestCreative = videos[0] || imgs[0] || (o.creative && /^https?:/i.test(o.creative) ? o.creative : "");
 
+  // dias rodando: a data REAL de veiculação do anúncio manda; firstSeen é só fallback
   let days = null;
-  if (o.firstSeen) {
+  const pubDate = o.published ? parsePtDate(String(o.published).trim()) : null;
+  if (pubDate) {
+    days = Math.max(1, Math.round((Date.now() - pubDate.getTime()) / 86400000));
+  } else if (o.firstSeen) {
     days = Math.max(1, Math.round((Date.now() - new Date(o.firstSeen + "T12:00:00").getTime()) / 86400000));
-  } else if (o.published) {
-    const p = o.published.trim();
-    let dateObj = null;
-    const ptMatch = p.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (ptMatch) dateObj = new Date(+ptMatch[3], +ptMatch[2] - 1, +ptMatch[1]);
-    if (!dateObj || isNaN(dateObj.getTime())) dateObj = new Date(p);
-    if (dateObj && !isNaN(dateObj.getTime())) {
-      days = Math.max(1, Math.round((Date.now() - dateObj.getTime()) / 86400000));
-    }
   }
 
   const published = o.firstSeen ? o.firstSeen.split("-").reverse().join("/") : (o.published || null);
@@ -502,7 +521,7 @@ function renderPreviewModal(o, ctx = {}) {
   else { scoreDetails.push({ ok: null, text: "dias rodando não detectado" }); }
 
   if (galleryItems.length >= 3) { score += 20; scoreDetails.push({ ok: true, text: `${galleryItems.length} variações de criativo` }); }
-  else if (galleryItems.length >= 1) { score += 10; scoreDetails.push({ ok: null, text: `${galleryItems.length} criativo` }); }
+  else if (galleryItems.length >= 1) { score += 10; scoreDetails.push({ ok: null, text: `${galleryItems.length} criativo${galleryItems.length > 1 ? "s" : ""}` }); }
 
   if (ticket) {
     const val = parseFloat(ticket.replace(/[^\d,]/g, "").replace(",", "."));
@@ -555,8 +574,9 @@ function renderPreviewModal(o, ctx = {}) {
             </div>
           </div>
           <div class="fbl-alinks">
+            ${bestCreative ? `<button type="button" data-fb-best="${escHtml(bestCreative)}">🎬 Ver melhor criativo (${videos.length ? "vídeo" : "imagem"})</button>` : ""}
+            ${o.site ? `<a href="${escHtml(o.site)}" target="_blank" rel="noopener">🌐 Página de vendas / VSL do anunciante ↗</a>` : ""}
             ${o.fbPage ? `<a href="${escHtml(o.fbPage)}" target="_blank" rel="noopener">📘 Página no Facebook ↗</a>` : ""}
-            ${o.site ? `<a href="${escHtml(o.site)}" target="_blank" rel="noopener">🌐 Site / página de vendas ↗</a>` : ""}
             <a href="${escHtml(allAdsUrl)}" target="_blank" rel="noopener">🔎 Ver TODOS os anúncios deste anunciante ↗</a>
             <a href="${escHtml(libUrl)}" target="_blank" rel="noopener">📚 Abrir na Biblioteca de Anúncios ↗</a>
           </div>
@@ -621,6 +641,9 @@ function renderPreviewModal(o, ctx = {}) {
   modal.addEventListener("click", (e) => {
     if (e.target === modal || e.target.closest("[data-fb-close]")) return modal.remove();
     if (e.target.closest("[data-fb-lib]")) { if (ctx.onSeen) ctx.onSeen(); return; }
+
+    const best = e.target.closest("[data-fb-best]");
+    if (best) { showCreativeViewer(best.dataset.fbBest); return; }
 
     const thumb = e.target.closest("[data-fbl-thumb]");
     if (thumb) {

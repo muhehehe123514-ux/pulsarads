@@ -19,6 +19,45 @@ function fbUrl(q, country) {
     (country || "BR") + "&q=" + encodeURIComponent(q) + "&search_type=keyword_unordered&media_type=all";
 }
 
+/* Visita a página de destino do anúncio (VSL / página de vendas) e extrai:
+   - TICKET real: preço mais frequente no HTML (R$ …)
+   - VSL: presença de player de vídeo (vturb, converteai, panda, youtube…) */
+async function enrichFromSite(ad) {
+  if (!ad.site || !/^https?:/i.test(ad.site)) return;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(ad.site, { signal: ctrl.signal, redirect: "follow", credentials: "omit" });
+    clearTimeout(t);
+    const html = (await r.text()).slice(0, 500000);
+
+    if (ad.price == null) {
+      const count = {};
+      const re = /R\$\s*(?:&nbsp;|\s)*(\d{1,3}(?:\.\d{3})?(?:,\d{2})?|\d{1,4}(?:\.\d{2})?)/g;
+      let m;
+      while ((m = re.exec(html))) {
+        let raw = m[1];
+        let v = raw.includes(",")
+          ? parseFloat(raw.replace(/\./g, "").replace(",", "."))
+          : parseFloat(raw);
+        if (v >= 5 && v <= 1000) {
+          const k = v.toFixed(2);
+          count[k] = (count[k] || 0) + 1;
+        }
+      }
+      const keys = Object.keys(count);
+      if (keys.length) {
+        keys.sort((a, b) => (count[b] - count[a]) || (parseFloat(a) - parseFloat(b)));
+        ad.price = parseFloat(keys[0]);
+        ad.priceFromSite = true;
+      }
+    }
+    if (!ad.hasVsl && /vturb|converteai|smartplayer|pandavideo|panda-video|wistia|vimeo|youtube\.com\/embed|vsl/i.test(html)) {
+      ad.hasVsl = true;
+    }
+  } catch (_) {}
+}
+
 async function mirrorSearch(queries, country) {
   const all = [];
   const seen = new Set();
@@ -42,6 +81,10 @@ async function mirrorSearch(queries, country) {
     finally { if (tab) { try { await chrome.tabs.remove(tab.id); } catch (_) {} } }
     if (all.length >= 30) break;
   }
+  // enriquece com o ticket real da página de vendas (em paralelo, sem travar)
+  await Promise.allSettled(
+    all.filter((a) => a.site && (a.price == null || !a.hasVsl)).slice(0, 12).map(enrichFromSite)
+  );
   return { ads: all, total };
 }
 

@@ -35,7 +35,9 @@ Agora recebe também vídeos, ticket real, site externo, nº de anúncios.
     if (!data) { if (window.toast) toast("Não consegui ler os dados espelhados 😕 Tente de novo."); return; }
 
     const imgs = (data.imgs || []).filter(Boolean).slice(0, 8);
-    const videos = (data.videos || []).filter(Boolean).slice(0, 3);
+    const videos = (data.videos || []).filter((u) => u && /^https?:/i.test(u)).slice(0, 3);
+    const posters = (data.posters || []).filter(Boolean).slice(0, 3);
+    if (!videos.length && !imgs.length && posters.length) imgs.push(...posters);
 
     const offer = {
       name: (data.name || data.headline || data.page || "Oferta do Facebook").slice(0, 90),
@@ -43,8 +45,8 @@ Agora recebe também vídeos, ticket real, site externo, nº de anúncios.
       avatarUrl: data.avatar || "",
       imgUrls: imgs,
       videoUrls: videos,
-      videoPosters: (data.posters || []).filter(Boolean).slice(0, 3),
-      creative: imgs[0] || videos[0] || "",
+      videoPosters: posters,
+      creative: videos[0] || imgs[0] || "",
       desc: data.text || "",
       fbPage: data.pageUrl || "",
       site: data.site || "",

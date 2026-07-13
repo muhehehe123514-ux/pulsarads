@@ -428,14 +428,18 @@ if(!av){
   if(sm[0]) av = sm[0].currentSrc || sm[0].src;
 }
 
-// VÍDEOS (só do modal)
-var videoEls = [].slice.call(modal.querySelectorAll('video, video source'));
-var V = [];
-videoEls.forEach(function(v){
-  var src = v.src || v.getAttribute('src') || '';
-  if(src && V.indexOf(src) < 0) V.push(src);
+// VÍDEOS (só do modal) — blob: não funciona fora do FB, então usa a capa
+var V = [], P = [];
+[].slice.call(modal.querySelectorAll('video')).forEach(function(v){
+  var src = v.currentSrc || v.src || '';
+  if(!src || src.indexOf('blob:') === 0){
+    var so = v.querySelector('source');
+    if(so) src = so.src || so.getAttribute('src') || '';
+  }
+  if(/^https?:/.test(src) && V.indexOf(src) < 0){ V.push(src); P.push(v.poster || ''); }
+  else if(v.poster && U.indexOf(v.poster) < 0) U.push(v.poster);
 });
-V = V.slice(0, 3);
+V = V.slice(0, 3); P = P.slice(0, 3);
 
 // PÁGINA DO ANUNCIANTE (link interno FB)
 var page = '', pageUrl = '';
@@ -535,7 +539,7 @@ if(!U.length && !V.length && !page){
 var data = {
   name: name,
   page: page, pageUrl: pageUrl, avatar: av,
-  imgs: U, videos: V,
+  imgs: U, videos: V, posters: P,
   text: text, started: started, libraryId: libId,
   ads: ads, site: site, price: price, hasVsl: hasVsl,
   active: active, multiV: multiV, versions: verM ? parseInt(verM[1]) : null,

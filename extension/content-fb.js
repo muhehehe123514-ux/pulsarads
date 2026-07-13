@@ -83,9 +83,11 @@
       var verMatch = txt.match(/(\d{1,3})\s+an[uú]ncios usam/i);
       var versions = verMatch ? parseInt(verMatch[1], 10) : null;
 
-      // TICKET REAL (R$ XX,XX) — só valor realista
+      // TICKET REAL — "R$ 19,90", "por apenas 19,90", "somente 27"
       var price = null;
-      var priceMatch = txt.match(/R\$\s*(\d{1,3}(?:[.,]\d{1,2})?)/);
+      var priceMatch = txt.match(/R\$\s*(\d{1,3}(?:[.,]\d{1,2})?)/) ||
+                       txt.match(/por\s+apenas\s+(\d{1,3}[.,]\d{2})/i) ||
+                       txt.match(/(?:somente|apenas|s[óo])\s+(\d{1,3}[.,]\d{2})/i);
       if (priceMatch) {
         var valor = parseFloat(priceMatch[1].replace(",", "."));
         if (valor >= 1 && valor <= 9999) price = valor;
@@ -109,36 +111,41 @@
         }
       }
 
-      // IMAGENS (só deste card)
+      // IMAGENS (só deste card) — funciona mesmo se ainda não carregaram
+      // (lazy-load em aba de fundo deixa naturalWidth = 0; aí decide pela URL)
       var imgEls = [].slice.call(card.querySelectorAll("img"))
         .filter(function (im) { return /fbcdn|scontent/.test(im.currentSrc || im.src || ""); });
       var cre = [];
       var avatar = "";
       imgEls.forEach(function (im) {
-        var w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
+        var w = im.naturalWidth || im.width || 0, h = im.naturalHeight || im.height || 0;
         var s = im.currentSrc || im.src;
-        if (w >= 180 || h >= 180) cre.push({ u: s, a: w * h });
-        else if (!avatar && Math.abs(w - h) < 16 && w >= 24 && w <= 140) avatar = s;
+        var smallUrl = /\/[sp]\d{2,3}x\d{2,3}\//.test(s) || /_[sq]\.(jpg|png)/.test(s); // avatar de página
+        if (!avatar && (smallUrl || (w > 0 && w <= 140 && Math.abs(w - h) < 16))) { avatar = s; return; }
+        if (smallUrl) return;
+        if (w >= 180 || h >= 180 || (!w && !h)) cre.push({ u: s, a: w * h });
       });
-      cre.sort(function (a, b) { return b.a - a.a; });
+      cre.sort(function (a, b) { return b.a - a.a; }); // maiores primeiro; desconhecidas mantêm a ordem
       var imgs = [];
       cre.forEach(function (c) { if (imgs.indexOf(c.u) < 0) imgs.push(c.u); });
       if (!avatar) {
-        var sm = imgEls.filter(function (im) { return (im.naturalWidth || im.width) <= 140; });
+        var sm = imgEls.filter(function (im) { return (im.naturalWidth || im.width || 999) <= 140; });
         if (sm[0]) avatar = sm[0].currentSrc || sm[0].src;
       }
 
-      // VÍDEOS (src + poster pra thumbnail)
+      // VÍDEOS — só URLs http(s) servem fora do FB; blob: vira a thumb (poster)
       var videos = [], posters = [];
       [].slice.call(card.querySelectorAll("video")).forEach(function (v) {
         var src = v.currentSrc || v.src || "";
-        if (!src) {
+        if (!src || src.indexOf("blob:") === 0) {
           var so = v.querySelector("source");
           if (so) src = so.src || so.getAttribute("src") || "";
         }
-        if (src && videos.indexOf(src) < 0) {
+        if (/^https?:/.test(src) && videos.indexOf(src) < 0) {
           videos.push(src);
           posters.push(v.poster || "");
+        } else if (v.poster && imgs.indexOf(v.poster) < 0) {
+          imgs.push(v.poster); // pelo menos a capa do vídeo fica baixável
         }
       });
 
