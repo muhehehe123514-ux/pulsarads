@@ -22,6 +22,7 @@ function fbUrl(q, country) {
 async function mirrorSearch(queries, country) {
   const all = [];
   const seen = new Set();
+  let total = null;
   const qs = (queries || []).slice(0, 6);
   for (const q of qs) {
     const url = fbUrl(q, country);
@@ -32,6 +33,7 @@ async function mirrorSearch(queries, country) {
       await sleep(3500); // deixa os anúncios renderizarem
       let res = { ads: [] };
       try { res = await chrome.tabs.sendMessage(tab.id, { cmd: "scrapeFb" }); } catch (_) {}
+      if (res && res.total && !total) total = res.total;
       (res && res.ads || []).forEach((a) => {
         const k = a.libraryId || (a.page + "|" + a.name);
         if (!seen.has(k)) { seen.add(k); a.country = country; a.query = q; a.libUrl = url; all.push(a); }
@@ -40,15 +42,15 @@ async function mirrorSearch(queries, country) {
     finally { if (tab) { try { await chrome.tabs.remove(tab.id); } catch (_) {} } }
     if (all.length >= 30) break;
   }
-  return all;
+  return { ads: all, total };
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, send) => {
   if (msg && msg.cmd === "ping") { send({ ok: true, ext: "pulsarads-espelho" }); return true; }
   if (msg && msg.cmd === "searchMirror") {
     mirrorSearch(msg.queries || [], msg.country || "BR")
-      .then((ads) => send({ ads }))
-      .catch(() => send({ ads: [] }));
+      .then((r) => send({ ads: r.ads, total: r.total }))
+      .catch(() => send({ ads: [], total: null }));
     return true; // assíncrono
   }
 });

@@ -27,7 +27,9 @@
     if (!d || d.app !== "pulsarads-ext") return;
     if (d.type === "ready") markReady();
     if ((d.type === "result" || d.type === "pong") && d.reqId && pending[d.reqId]) {
-      pending[d.reqId](d.ads || d);
+      const ads = d.ads || d;
+      if (Array.isArray(ads) && d.total) ads._total = d.total; // "~120 resultados" da Ad Library
+      pending[d.reqId](ads);
       delete pending[d.reqId];
     }
   });

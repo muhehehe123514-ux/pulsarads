@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PulsarAds Espelho",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Espelha anúncios reais da Biblioteca de Anúncios do Facebook (pública) direto no PulsarAds — pesquisou, apareceu com imagens.",
   "permissions": ["tabs"],
   "host_permissions": [

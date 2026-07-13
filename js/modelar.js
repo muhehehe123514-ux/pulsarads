@@ -442,10 +442,7 @@ ${faq.map(([q, a]) => `<details><summary>${escHtml(q)}</summary><p>${escHtml(a)}
 </body></html>`;
 }
 
-$("#btnMdPage").addEventListener("click", () => {
-  if (!md.offer) return toast("Comece pelo passo 1 ✨");
-  if (!md.prom) { md.prom = md.proms[0] || ""; }
-  if (!md.headline) mdGenHeads();
+function mdShowPage() {
   md.palette = +$("#mdPalette").value;
   md.fontHead = +$("#mdFontHead").value;
   md.fontBody = +$("#mdFontBody").value;
@@ -457,8 +454,30 @@ $("#btnMdPage").addEventListener("click", () => {
   $("#mdPageCard").hidden = false;
   $("#mdPublishOut").innerHTML = "";
   $("#mdPageCard").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+$("#btnMdPage").addEventListener("click", () => {
+  if (!md.offer) return toast("Comece pelo passo 1 ✨");
+  if (!md.prom) { md.prom = md.proms[0] || ""; }
+  if (!md.headline) mdGenHeads();
+  mdShowPage();
   toast("Página de vendas gerada 🚀 Edite à vontade!");
 });
+
+// chamada pelo 🧭 Modelador Low Ticket: gera a página de vendas do plano
+window.ltBuildSalesPage = (plan) => {
+  md.idx = null;
+  md.offer = { name: plan.name, price: plan.price, niche: plan.niche, img: "" };
+  md.headline = plan.headline || plan.name;
+  md.sub = plan.sub || "";
+  md.prom = plan.sub || "";
+  $("#mdIdeasCard").hidden = true;
+  $("#mdPromCard").hidden = true;
+  $("#mdHeadCard").hidden = true;
+  location.hash = "#modelar";
+  mdShowPage();
+  toast("Página de vendas do low ticket gerada 🚀 Edite e publique!");
+};
 
 // ============================================================
 // EDIÇÃO do preview: texto, imagens por clique, seções, links
