@@ -1232,21 +1232,49 @@ const CR_RENDER_STYLES = {
 };
 $("#crRenderStyle").innerHTML = Object.entries(CR_RENDER_STYLES).map(([k, v], i) => `<option value="${k}"${i === 0 ? " selected" : ""}>${v.name}</option>`).join("");
 
-// dica do campo "detalhe" muda conforme o estilo (que produto? que adesivo? …)
+// TIPOS PRONTOS por estilo — menuzinho pra escolher exatamente o formato
+// (caneca × copo × xícara…, corpo inteiro × rosto × logo…), com "outro" livre
+const CR_STYLE_TYPES = {
+  foto: ["produto sobre mesa premium", "produto segurado na mão", "comida apetitosa em close", "pessoa usando o produto", "flat lay (visto de cima)"],
+  cinema: ["selfie com personagens ao redor", "grupo de personagens em cena", "cena de ação dramática", "cena de aventura épica", "cena de suspense leve"],
+  produto3d: ["caneca", "copo", "xícara", "prato", "camiseta", "moletom", "boné", "pelúcia", "action figure", "boneco estilo funko", "chaveiro", "almofada", "quadro/pôster emoldurado", "capinha de celular", "mousepad", "garrafa/squeeze", "luminária", "embalagem/caixa premium"],
+  holografico: ["personagem de corpo inteiro", "rosto do personagem", "só o logo", "personagem segurando o logo", "cena completa em adesivo"],
+  reluzente: ["personagem de corpo inteiro", "rosto do personagem", "só o logo", "personagem segurando o logo"],
+  cartoon3d: ["personagem em cena divertida", "personagem cozinhando", "personagem trabalhando", "mascote apresentando o produto", "personagem comemorando"],
+  textura: ["líquido metálico dourado", "fumaça colorida", "água cristalina", "tinta fluida", "mármore premium", "glitter com bokeh"],
+};
 const CR_STYLE_DETAIL_PH = {
   foto: "ex.: produto sobre mesa de mármore, fundo escuro",
   cinema: "ex.: cercado por 4 personagens, clima de aventura",
-  produto3d: "QUE PRODUTO? ex.: caneca, pelúcia, action figure, camiseta, boneco…",
-  holografico: "adesivo de quê? ex.: personagem de corpo inteiro / só o logo / rosto",
-  reluzente: "adesivo de quê? ex.: personagem de corpo inteiro / só o logo",
-  cartoon3d: "ex.: personagem cozinhando na cozinha, cena divertida",
-  textura: "ex.: líquido dourado, fumaça roxa, água cristalina",
+  produto3d: "ex.: caneca térmica preta com tampa",
+  holografico: "ex.: personagem acenando, meio corpo",
+  reluzente: "ex.: personagem piscando o olho",
+  cartoon3d: "ex.: personagem cozinhando na cozinha",
+  textura: "ex.: líquido dourado com bolhas",
 };
 function crSyncStyleDetail() {
+  const key = $("#crRenderStyle")?.value || "foto";
+  const sel = $("#crAiStyleType");
+  if (sel) {
+    sel.innerHTML = `<option value="">— tipo (opcional) —</option>` +
+      (CR_STYLE_TYPES[key] || []).map((t) => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join("") +
+      `<option value="__outro">✏️ outro (digitar)…</option>`;
+  }
   const inp = $("#crAiStyleDetail");
-  if (inp) inp.placeholder = CR_STYLE_DETAIL_PH[$("#crRenderStyle")?.value] || "detalhe opcional do estilo";
+  if (inp) {
+    inp.placeholder = CR_STYLE_DETAIL_PH[key] || "descreva o tipo desejado";
+    inp.hidden = true;
+    inp.value = "";
+  }
 }
 crSyncStyleDetail();
+$("#crAiStyleType")?.addEventListener("change", () => {
+  const outro = $("#crAiStyleType").value === "__outro";
+  $("#crAiStyleDetail").hidden = !outro;
+  if (outro) { $("#crAiStyleDetail").focus(); return; }
+  $("#crAiPrompt").value = buildAiPrompt();
+  toast("Tipo aplicado ao prompt 🎯");
+});
 $("#crAiStyleDetail")?.addEventListener("change", () => {
   $("#crAiPrompt").value = buildAiPrompt();
   toast("Detalhe aplicado ao prompt 🎯");
@@ -1298,27 +1326,58 @@ async function crUploadRefDataUrl(dataUrl, statusLabel) {
   if ($("#crAiPrompt").value.trim()) $("#crAiPrompt").value = buildAiPrompt();
 }
 
+// tira a palavra do PRODUTO da busca ("caneca do bob esponja" → busca "bob esponja")
+// e devolve o produto identificado pra preencher o menuzinho de tipo sozinho
+const CR_PRODUCT_WORDS = ["caneca", "copo", "xícara", "xicara", "prato", "camiseta", "blusa", "moletom", "boné", "bone", "pelúcia", "pelucia", "action figure", "boneco", "funko", "chaveiro", "almofada", "quadro", "pôster", "poster", "capinha", "mousepad", "garrafa", "squeeze", "luminária", "luminaria", "adesivo", "figurinha", "sticker", "brinquedo", "embalagem", "caixa"];
+function crCleanRefQuery(raw) {
+  let q = " " + raw.toLowerCase() + " ";
+  let produto = null;
+  for (const w of CR_PRODUCT_WORDS) {
+    const re = new RegExp(`\\b${w}s?\\b(\\s+(d[eoa]s?|com|para|pra))?`, "i");
+    if (re.test(q)) { if (!produto) produto = w; q = q.replace(re, " "); }
+  }
+  q = q.replace(/\b(criar|fazer|gerar|quero|um|uma|estilo|realista|holográfico|holografico|reluzente|brilhante)\b/gi, " ")
+    .replace(/\s+/g, " ").trim();
+  return { q: q || raw.trim(), produto };
+}
+
 $("#btnCrAiWebRef")?.addEventListener("click", async () => {
-  const q = $("#crAiBrief")?.value.trim() || $("#crHeadline")?.value.trim() || "";
-  if (!q) return toast("Escreva primeiro no campo acima o que você quer criar ✍️");
+  const rawQ = $("#crAiBrief")?.value.trim() || $("#crHeadline")?.value.trim() || "";
+  if (!rawQ) return toast("Escreva primeiro no campo acima o que você quer criar ✍️");
   const btn = $("#btnCrAiWebRef");
   const lb = btn.textContent;
   btn.disabled = true;
   btn.textContent = "🌐 procurando o mais famoso…";
   try {
+    // limpa a busca e IDENTIFICA o produto ("caneca do bob esponja" → caneca + bob esponja)
+    const { q, produto } = crCleanRefQuery(rawQ);
+    if (produto) {
+      const typeSel = $("#crAiStyleType");
+      if (typeSel && !typeSel.value) {
+        const opt = [...typeSel.options].find((op) => op.value && op.value.toLowerCase().includes(produto.replace(/s$/, "")));
+        if (opt) { typeSel.value = opt.value; toast(`🎯 Identifiquei: ${opt.value} + ${q}`); }
+      }
+    }
+
+    // só aceita resultado que TEM A VER com a busca (mata o "Tales of Monkey Island")
+    const norm = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const qWords = norm(q).split(/\s+/).filter((w) => w.length >= 3);
+    const titleOk = (title) => {
+      const t = norm(title);
+      return !qWords.length || qWords.some((w) => t.includes(w) || norm(title).split(/\s+/).some((tw) => tw.includes(w) || w.includes(tw)));
+    };
     const find = async (lang, term) => {
-      const u = `https://${lang}.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrlimit=3&prop=pageimages&piprop=thumbnail&pithumbsize=900&format=json&origin=*`;
+      const u = `https://${lang}.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrlimit=4&prop=pageimages&piprop=thumbnail&pithumbsize=900&format=json&origin=*`;
       const j = await (await fetch(u)).json();
       const pages = j.query?.pages ? Object.values(j.query.pages).sort((a, b) => (a.index || 9) - (b.index || 9)) : [];
-      const p = pages.find((pg) => pg.thumbnail?.source);
+      const p = pages.find((pg) => pg.thumbnail?.source && titleOk(pg.title));
       return p ? { url: p.thumbnail.source, title: p.title } : null;
     };
     // o TIPO escolhido guia a busca: "personagem" acha o artigo do PERSONAGEM
     // (imagem dele), e não o da série/marca (que costuma ser só o logo)
     const kind = $("#crAiRefKind")?.value || "auto";
     const tries = [];
-    if (kind === "personagem") tries.push(["pt", q + " personagem"], ["en", q + " character"]);
-    if (kind === "produto") tries.push(["pt", q + " produto"]);
+    if (kind === "personagem" || kind === "animal") tries.push(["pt", q + " personagem"], ["en", q + " character"]);
     tries.push(["pt", q], ["en", q]);
     let hit = null;
     for (const [lang, term] of tries) {
@@ -1398,7 +1457,8 @@ function buildAiPrompt() {
   const themeName = (CR_THEMES[+$("#crTheme").value]?.name || "cores vibrantes").toLowerCase();
   const angle = (typeof md === "object" && md && md.idea) ? ` Ângulo de venda (só para inspirar a cena, NÃO escrever): ${md.idea}.` : "";
   const desc = o ? (o.desc || o.notes || "") : "";
-  const detail = $("#crAiStyleDetail")?.value.trim() || "";
+  const typeSel = $("#crAiStyleType")?.value || "";
+  const detail = typeSel === "__outro" ? ($("#crAiStyleDetail")?.value.trim() || "") : typeSel;
   const subject = (brief || (desc ? desc.replace(/\s+/g, " ").slice(0, 220) : `o produto "${headline}"`)) +
     (detail ? `. FORMATO/TIPO obrigatório do resultado: ${detail}` : "") + angle;
 
@@ -1417,6 +1477,8 @@ function buildAiPrompt() {
   const refKind = $("#crAiRefKind")?.value || "auto";
   const kindTxt = !crAiRefTitle ? "" :
     refKind === "personagem" ? `o PERSONAGEM ${crAiRefTitle}, de corpo inteiro, com a aparência original completa e correta do personagem (não o logo da marca)` :
+    refKind === "pessoa" ? `a PESSOA REAL ${crAiRefTitle} (ator/celebridade), com o rosto e a aparência reais preservados fielmente, sem parecer outra pessoa` :
+    refKind === "animal" ? `o ANIMAL/MASCOTE ${crAiRefTitle}, com a aparência original (cores, formato, expressão)` :
     refKind === "logo" ? `o LOGOTIPO oficial de ${crAiRefTitle}, reproduzido fielmente com as letras e cores originais` :
     refKind === "produto" ? `o produto ${crAiRefTitle}, com o design original` :
     crAiRefTitle;
