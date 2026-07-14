@@ -31,6 +31,9 @@ const QUALIFIERS_AUTO = ["por apenas", "R$ 19,90", "R$ 27", "acesso imediato"];
 const SAVED_KEY = "pulsar_saved_searches";
 let opQueue = [];
 let opTotal = null; // "~120 resultados" vindo da Ad Library
+let opSearches = []; // termos da última bateria (pro "🔎 Buscar mais ofertas")
+let opSeenIds = new Set(); // libraryIds já mostrados — nunca repete oferta
+let opRound = 1; // profundidade da rolagem na Ad Library
 
 const opNicheSel = $("#opNiche");
 opNicheSel.innerHTML =
@@ -114,7 +117,7 @@ function adToOffer(a, cc) {
     hasVsl,
     price: ticket,
     libUrl: a.libUrl || "",
-    status: "escalando",
+    status: "observando", // o status real vem do SCORE no preview
     statusActive: a.active !== false,
     platforms: a.platforms || [],
     searchTotal: a.searchTotal || null,
@@ -161,6 +164,9 @@ $("#btnOpGenerate").addEventListener("click", async () => {
     const ads = await window.pulsarExtSearch(searches.slice(0, 6), cc);
     if (ads && ads.length) {
       opTotal = ads._total || null;
+      opSearches = searches.slice(0, 6);
+      opRound = 1;
+      opSeenIds = new Set(ads.map((a) => a.libraryId).filter(Boolean));
       opQueue = ads.map((a) => ({ q: a.name, ad: adToOffer(a, cc), opened: false, niche: nicheIdx, country: cc }));
       renderOpQueue();
       toast(`🪞 ${ads.length} anúncios reais espelhados!`);
@@ -322,6 +328,11 @@ function renderOpQueue() {
     : (opQueue.length ? `${done}/${opQueue.length} abertas` : "");
   const list = $("#opSearchList");
   list.className = hasAds ? "fbl-grid" : "op-grid";
+  // modo espelhado: "🔎 Buscar mais" aparece; Reiniciar (que é do modo manual) some
+  const more = $("#btnOpMore");
+  if (more) more.hidden = !hasAds;
+  const reset = $("#btnOpReset");
+  if (reset) reset.hidden = hasAds;
   const nicheVal = opNicheSel.value;
   const nicheName = nicheVal === "custom" ? "Personalizado" : NICHES[+nicheVal].name;
   const emoji = typeof NICHE_EMOJI !== "undefined" && nicheVal !== "custom" ? NICHE_EMOJI[+nicheVal] || "🔥" : "🔥";
@@ -397,6 +408,41 @@ $("#btnOpAll").addEventListener("click", () => {
 $("#btnOpReset").addEventListener("click", () => {
   opQueue.forEach((s) => (s.opened = false));
   renderOpQueue();
+});
+
+// 🔎 BUSCAR MAIS OFERTAS — rola mais fundo na Ad Library e traz só INÉDITAS
+$("#btnOpMore")?.addEventListener("click", async () => {
+  if (!opSearches.length) return toast("Gere uma bateria de pesquisas primeiro 🔥");
+  if (!(window.pulsarExtAvailable && window.pulsarExtAvailable())) return toast("Instale a extensão 🪞 pra buscar mais ofertas automaticamente");
+  if (!window.canUse()) return;
+  const btn = $("#btnOpMore");
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "🔎 Buscando mais fundo… (pode levar 1-2 min)";
+  opRound++;
+  const cc = $("#opCountry").value;
+  const nicheVal = opNicheSel.value;
+  const nicheIdx = nicheVal === "custom" ? -1 : +nicheVal;
+  try {
+    const ads = await window.pulsarExtSearch(opSearches, cc, { round: opRound, exclude: [...opSeenIds] });
+    const novos = (ads || []).filter((a) => !a.libraryId || !opSeenIds.has(a.libraryId));
+    if (novos.length) {
+      novos.forEach((a) => { if (a.libraryId) opSeenIds.add(a.libraryId); });
+      opQueue = [...opQueue, ...novos.map((a) => ({ q: a.name, ad: adToOffer(a, cc), opened: false, niche: nicheIdx, country: cc }))];
+      if (ads._total) opTotal = ads._total;
+      renderOpQueue();
+      toast(`🔎 +${novos.length} oferta${novos.length > 1 ? "s" : ""} nova${novos.length > 1 ? "s" : ""} encontrada${novos.length > 1 ? "s" : ""}!`);
+      window.spendUse();
+    } else {
+      opRound--; // não gastou profundidade à toa
+      toast("Nenhuma oferta nova nessa profundidade — tente de novo ou mude a palavra-chave 🔁");
+    }
+  } catch (e) {
+    opRound--;
+    toast("Não consegui buscar mais agora 😕 Tente de novo.");
+  }
+  btn.disabled = false;
+  btn.textContent = label;
 });
 
 $("#opSearchList").addEventListener("click", (e) => {
@@ -560,8 +606,16 @@ function renderPreviewModal(o, ctx = {}) {
     scoreDetails.push({ ok: null, text: "ticket não detectado" });
   }
 
-  const scoreLabel = score >= 70 ? "🔥 OFERTA FORTE" : score >= 40 ? "👀 VALE OLHAR" : "🧪 EM TESTE";
-  const scoreColor = score >= 70 ? "var(--good)" : score >= 40 ? "#f59e0b" : "var(--muted)";
+  // STATUS HONESTO pelo score: só ganha "Escalando" quem prova que merece
+  const scoreTier = score >= 90
+    ? { label: "🏆 OFERTA VALIDADA", color: "#22c55e", libStatus: "escalando" }
+    : score >= 70
+      ? { label: "🔥 ESCALANDO", color: "#f97316", libStatus: "escalando" }
+      : score >= 40
+        ? { label: "👀 VALE OLHAR", color: "#f59e0b", libStatus: "observando" }
+        : { label: "🧪 EM TESTE", color: "var(--muted)", libStatus: "validando" };
+  const scoreLabel = scoreTier.label;
+  const scoreColor = scoreTier.color;
 
   const allAdsUrl = o.advertiser
     ? `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=${country}&publisher_platforms[0]=facebook&q=${encodeURIComponent(o.advertiser)}&search_type=keyword_unordered`
@@ -621,7 +675,7 @@ function renderPreviewModal(o, ctx = {}) {
         <section class="fbl-sec pulsar">
           <h4>📊 Análise PulsarAds</h4>
           <div class="fb-tiles">
-            <div><span>Status</span><b>${st ? st.label : "🔎 ativo agora"}</b></div>
+            <div><span>Status</span><b style="color:${scoreColor}">${(o._mirror || o._live) ? scoreLabel : (st ? st.label : "🔎 ativo agora")}</b></div>
             <div><span>Nicho</span><b>${escHtml(nicheName)}</b></div>
             <div><span>Idioma</span><b>${o.lang || "—"}</b></div>
             <div><span>País</span><b>${escHtml(country)}</b></div>
@@ -672,7 +726,10 @@ function renderPreviewModal(o, ctx = {}) {
   modal.innerHTML = body;
   document.body.appendChild(modal);
 
-  const ensureInLibrary = () => (window.libAddOffer ? window.libAddOffer(o) : (window.libAddFromSearch && window.libAddFromSearch(o.name, libUrl, country), -1));
+  // salva com o status que o SCORE justifica (nada de "escalando" com 40/100)
+  const ensureInLibrary = () => (window.libAddOffer
+    ? window.libAddOffer({ ...o, status: (o._mirror || o._live) ? scoreTier.libStatus : o.status })
+    : (window.libAddFromSearch && window.libAddFromSearch(o.name, libUrl, country), -1));
 
   modal.addEventListener("click", (e) => {
     if (e.target === modal || e.target.closest("[data-fb-close]")) return modal.remove();
@@ -892,12 +949,21 @@ $("#ltNiche").innerHTML = NICHES.map((n, i) => `<option value="${i}">${n.name}</
 const LT_NAMES = ["Guia Prático", "Método Express", "Planner Completo", "Manual Definitivo", "Kit Turbo", "Desafio Relâmpago", "Protocolo", "Fórmula", "Blueprint", "Sistema"];
 const LT_MECH = ["em 3 passos", "com o método dos 15 minutos", "sem complicação", "do zero ao resultado", "no piloto automático", "com checklist diário"];
 
+// 💰 preço personalizado: mostra o campo quando escolher "Personalizado…"
+$("#ltPrice")?.addEventListener("change", () => {
+  const custom = $("#ltPrice").value === "custom";
+  $("#ltPriceCustom").hidden = !custom;
+  if (custom) $("#ltPriceCustom").focus();
+});
+
 $("#btnLtGenerate").addEventListener("click", () => {
   if (!window.canUse()) return;
   const niche = NICHES[+$("#ltNiche").value];
   const topic = $("#ltTopic").value.trim() || niche.kws[0];
   const format = $("#ltFormat").value;
-  const price = parseFloat($("#ltPrice").value) || 27;
+  const price = $("#ltPrice").value === "custom"
+    ? (parseFloat(String($("#ltPriceCustom").value).replace(",", ".")) || 27)
+    : (parseFloat($("#ltPrice").value) || 27);
   const priceFmt = BRL.format(price);
   const anchor = BRL.format(price * 3);
   const mech = pick(LT_MECH);

@@ -258,13 +258,20 @@
 
   chrome.runtime.onMessage.addListener(function (msg, sender, send) {
     if (msg && msg.cmd === "scrapeFb") {
+      // round 1 = topo da página; rounds seguintes ("Buscar mais ofertas")
+      // rolam MUITO mais fundo pra carregar anúncios que ainda não apareceram
+      var round = Math.max(1, msg.round || 1);
+      var needScrolls = Math.min(4 + (round - 1) * 8, 28);
       var tries = 0;
       var tick = function () {
+        if (tries < needScrolls) {
+          try { window.scrollBy(0, 1400); } catch (e) {}
+          tries++;
+          setTimeout(tick, round > 1 ? 550 : 800);
+          return;
+        }
         var res = collectAds();
-        // achou um bom lote OU esgotou as tentativas → devolve
-        if (res.ads.length >= 4 || tries > 8 || (res.ads.length && tries > 4)) { send(res); return; }
-        // rola a página pra forçar o carregamento dos próximos anúncios
-        try { window.scrollBy(0, 1000); } catch (e) {}
+        if (res.ads.length || tries > needScrolls + 5) { send(res); return; }
         tries++;
         setTimeout(tick, 800);
       };

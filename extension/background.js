@@ -58,16 +58,17 @@ async function enrichFromSite(ad) {
   } catch (_) {}
 }
 
-async function mirrorSearch(queries, country) {
+async function mirrorSearch(queries, country, round, excludeIds) {
   const all = [];
-  const seen = new Set();
+  const seen = new Set(excludeIds || []); // não repete oferta já mostrada no site
   let total = null;
-  // ORÇAMENTO DE TEMPO: o site espera a resposta — 4 termos no máximo e
-  // parada antecipada, senão a busca estoura o tempo e cai no modo manual.
+  round = Math.max(1, round || 1);
+  // ORÇAMENTO DE TEMPO: o site espera a resposta — parada antecipada,
+  // senão a busca estoura o tempo e cai no modo manual.
   const t0 = Date.now();
-  const qs = (queries || []).slice(0, 4);
+  const qs = (queries || []).slice(0, round > 1 ? 3 : 4);
   for (const q of qs) {
-    if (Date.now() - t0 > 75000 || all.length >= 16) break;
+    if (Date.now() - t0 > 100000 || all.length >= 18) break;
     const url = fbUrl(q, country);
     let tab;
     try {
@@ -75,7 +76,7 @@ async function mirrorSearch(queries, country) {
       await waitComplete(tab.id);
       await sleep(2500); // deixa os anúncios renderizarem
       let res = { ads: [] };
-      try { res = await chrome.tabs.sendMessage(tab.id, { cmd: "scrapeFb" }); } catch (_) {}
+      try { res = await chrome.tabs.sendMessage(tab.id, { cmd: "scrapeFb", round }); } catch (_) {}
       if (res && res.total && !total) total = res.total;
       const qTotal = res && res.total ? parseInt(String(res.total).replace(/\D/g, ""), 10) || null : null;
       (res && res.ads || []).forEach((a) => {
@@ -101,7 +102,7 @@ async function mirrorSearch(queries, country) {
 chrome.runtime.onMessage.addListener((msg, sender, send) => {
   if (msg && msg.cmd === "ping") { send({ ok: true, ext: "pulsarads-espelho" }); return true; }
   if (msg && msg.cmd === "searchMirror") {
-    mirrorSearch(msg.queries || [], msg.country || "BR")
+    mirrorSearch(msg.queries || [], msg.country || "BR", msg.round || 1, msg.exclude || [])
       .then((r) => send({ ads: r.ads, total: r.total }))
       .catch(() => send({ ads: [], total: null }));
     return true; // assíncrono

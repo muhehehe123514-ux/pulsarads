@@ -35,12 +35,13 @@
   });
 
   // busca real via extensão; resolve com array de anúncios ou null se indisponível
-  window.pulsarExtSearch = (queries, country) => new Promise((resolve) => {
+  // extra: { round: 2+, exclude: [libraryIds] } pro "🔎 Buscar mais ofertas"
+  window.pulsarExtSearch = (queries, country, extra = {}) => new Promise((resolve) => {
     if (!window.PULSAR_EXT) return resolve(null);
     const reqId = "r" + Date.now() + "_" + Math.random().toString(36).slice(2);
     pending[reqId] = (ads) => resolve(Array.isArray(ads) ? ads : (ads && ads.ads) || null);
-    window.postMessage({ app: "pulsarads", cmd: "searchMirror", queries, country, reqId }, "*");
-    setTimeout(() => { if (pending[reqId]) { delete pending[reqId]; resolve(null); } }, 150000);
+    window.postMessage({ app: "pulsarads", cmd: "searchMirror", queries, country, reqId, round: extra.round || 1, exclude: extra.exclude || [] }, "*");
+    setTimeout(() => { if (pending[reqId]) { delete pending[reqId]; resolve(null); } }, 180000);
   });
 
   window.pulsarExtAvailable = () => window.PULSAR_EXT;

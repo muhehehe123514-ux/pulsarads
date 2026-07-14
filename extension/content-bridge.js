@@ -27,7 +27,7 @@ window.addEventListener("message", (ev) => {
     });
   }
   if (d.cmd === "searchMirror") {
-    chrome.runtime.sendMessage({ cmd: "searchMirror", queries: d.queries, country: d.country }, (resp) => {
+    chrome.runtime.sendMessage({ cmd: "searchMirror", queries: d.queries, country: d.country, round: d.round || 1, exclude: d.exclude || [] }, (resp) => {
       window.postMessage({ app: "pulsarads-ext", type: "result", reqId: d.reqId, ads: (resp && resp.ads) || [], total: (resp && resp.total) || null }, "*");
     });
   }

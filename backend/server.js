@@ -372,6 +372,7 @@ async function listUsers() {
           created: rec.created || null,
           plan: planActive(rec) ? rec.plan : "free",
           paidUntil: planActive(rec) ? rec.paidUntil : null,
+          activatedAt: planActive(rec) && rec.updated ? String(rec.updated).slice(0, 10) : null,
         });
       } catch (_) {}
     }
@@ -382,7 +383,12 @@ async function listUsers() {
     .filter((k) => !k.startsWith("__tok_"))
     .map((name) => {
       const rec = d[name];
-      return { user: name, created: rec.created || null, plan: planActive(rec) ? rec.plan : "free", paidUntil: planActive(rec) ? rec.paidUntil : null };
+      return {
+        user: name, created: rec.created || null,
+        plan: planActive(rec) ? rec.plan : "free",
+        paidUntil: planActive(rec) ? rec.paidUntil : null,
+        activatedAt: planActive(rec) && rec.updated ? String(rec.updated).slice(0, 10) : null,
+      };
     });
 }
 

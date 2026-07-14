@@ -602,10 +602,17 @@ function admRenderCloud() {
   box.innerHTML = list.length
     ? list.slice(0, 60).map((u) => {
         const pill = u.plan === "max" ? '<span class="pill pill-on">🚀 Max</span>' : u.plan === "pro" ? '<span class="pill pill-on">⚡ Pro</span>' : '<span class="pill pill-off">grátis</span>';
-        const until = !u.paidUntil ? "" : u.paidUntil === "vida" ? " · ♾️ vitalício" : " · até " + u.paidUntil.split("-").reverse().join("/");
+        const br = (d) => (d ? d.split("-").reverse().join("/") : "");
+        let planInfo = "";
+        if (u.paidUntil === "vida") planInfo = " · ♾️ vitalício";
+        else if (u.paidUntil) {
+          const restam = Math.max(0, Math.ceil((new Date(u.paidUntil + "T23:59:59").getTime() - Date.now()) / 86400000));
+          planInfo = ` · ⏳ restam <strong>${restam} dia${restam === 1 ? "" : "s"}</strong> · termina em <strong>${br(u.paidUntil)}</strong>`;
+        }
+        const act = u.activatedAt ? ` · ativado em ${br(u.activatedAt)}` : "";
         return `<div class="out-item adm-cloud-user" data-adm-open="${escHtml(u.user)}">
           <div><span class="out-tag">${escHtml(u.user)}</span>
-          <div class="out-text">${pill}${until}${u.created ? " · criada em " + u.created.split("-").reverse().join("/") : ""}</div></div>
+          <div class="out-text">${pill}${act}${planInfo}${u.created ? " · conta criada em " + br(u.created) : ""}</div></div>
           <div class="out-actions"><span class="hint">clique pra licenciar ▾</span></div>
         </div>
         <div class="adm-grant" data-adm-panel="${escHtml(u.user)}" hidden>

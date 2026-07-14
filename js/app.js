@@ -777,6 +777,16 @@ function drawCreative(t = 1, loop = 0) {
   if (anim === "float") {
     ctx.translate(0, Math.sin(loop * 1.4) * 10);
   }
+  // 💥 impacto: tremida rítmica curta (estilo batida de música)
+  if (anim === "shake" && loop > 0) {
+    const b = loop % 2.2;
+    if (b < 0.26) {
+      const k = (0.26 - b) / 0.26;
+      ctx.translate(Math.sin(loop * 91) * 20 * k, Math.cos(loop * 77) * 14 * k);
+    }
+  }
+  // 🔁 textos entram e saem em ciclo (alpha aplicado nos blocos de texto)
+  const textCycle = (anim === "fadecycle" && loop > 0) ? Math.min(1, Math.max(0.06, 0.5 + 0.62 * Math.sin(loop * 1.15))) : 1;
 
   // fundo em gradiente (vivo no modo pulse)
   const shift = anim === "pulse" ? Math.sin(loop * 1.2) * 0.3 : 0;
@@ -892,16 +902,90 @@ function drawCreative(t = 1, loop = 0) {
     cy += 110;
   }
 
-  // headline
+  // headline — com animações de TEXTO nível CapCut no modo vídeo
   const headline = $("#crHeadline").value.trim() || "Sua oferta em destaque";
   ctx.fillStyle = "#ffffff";
   const hSize = layout === 4 ? 84 : 92;
   ctx.font = `700 ${hSize}px ${fHead}`;
   const hLines = wrapText(ctx, headline, maxW);
+
+  // ⌨️ máquina de escrever: orçamento de caracteres que cicla no vídeo
+  let twBudget = Infinity;
+  if (anim === "typewriter" && loop > 0) {
+    const totalChars = hLines.join(" ").length;
+    twBudget = Math.floor((loop * 9) % (totalChars + 14)); // pausa no fim antes de recomeçar
+  }
+  let twUsed = 0;
+
+  // helper: desenha uma linha palavra a palavra (pop/slide)
+  const drawWords = (line, y, mode, lineIdx) => {
+    const words = line.split(" ");
+    const lw = ctx.measureText(line).width;
+    let x = centered ? cx - lw / 2 : cx;
+    const prevAlign = ctx.textAlign;
+    ctx.textAlign = "left";
+    const wordsBefore = hLines.slice(0, lineIdx).reduce((n, l2) => n + l2.split(" ").length, 0);
+    const totalWords = hLines.reduce((n, l2) => n + l2.split(" ").length, 0);
+    const cycle = Math.max(totalWords * 0.38 + 2.2, 3);
+    const tw = loop % cycle;
+    words.forEach((w, k) => {
+      const idx = wordsBefore + k;
+      const born = idx * 0.34;
+      const p = loop > 0 ? Math.min(1, Math.max(0, (tw - born) / 0.22)) : 1;
+      const wWidth = ctx.measureText(w + " ").width;
+      if (p > 0) {
+        ctx.save();
+        ctx.globalAlpha = p * textCycle;
+        if (mode === "wordpop") {
+          const s = 1 + 0.4 * (1 - p);
+          ctx.translate(x + wWidth / 2, y);
+          ctx.scale(s, s);
+          ctx.fillText(w, -wWidth / 2 + ctx.measureText(" ").width / 2, 0);
+        } else {
+          ctx.fillText(w, x - (1 - p) * 90, y);
+        }
+        ctx.restore();
+      }
+      x += wWidth;
+    });
+    ctx.textAlign = prevAlign;
+  };
+
   hLines.forEach((l, i) => {
     const a = stage(0.15 + i * 0.12, 0.5 + i * 0.12);
-    ctx.globalAlpha = a;
-    ctx.fillText(l, cx, cy + 66 + (1 - a) * slideY);
+    const y = cy + 66 + (1 - a) * slideY;
+    ctx.globalAlpha = a * textCycle;
+
+    if ((anim === "wordpop" || anim === "wordslide") && loop > 0) {
+      drawWords(l, y, anim, i);
+    } else if (anim === "typewriter") {
+      const remaining = Math.max(0, twBudget - twUsed);
+      const shown = l.slice(0, remaining);
+      twUsed += l.length + 1;
+      const withCursor = loop > 0 && shown.length < l.length ? shown + "▌" : shown;
+      ctx.fillText(withCursor, cx, y);
+    } else if (anim === "glitch" && loop > 0 && (loop % 1.9) < 0.24) {
+      // 📺 rajada de glitch RGB
+      const j = Math.sin(loop * 120) * 7;
+      ctx.save();
+      ctx.globalAlpha = 0.75 * a;
+      ctx.fillStyle = "#22d3ee"; ctx.fillText(l, cx - 7 + j, y - 3);
+      ctx.fillStyle = "#f472b6"; ctx.fillText(l, cx + 7 - j, y + 3);
+      ctx.restore();
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(l, cx + j * 0.4, y);
+    } else if (anim === "neon") {
+      // 💡 brilho neon pulsante
+      ctx.save();
+      ctx.shadowColor = theme.accent === "#ffffff" ? theme.ctaBg : theme.accent;
+      ctx.shadowBlur = loop > 0 ? 22 + 20 * (0.5 + 0.5 * Math.sin(loop * 3.2)) : 26;
+      ctx.fillText(l, cx, y);
+      ctx.fillText(l, cx, y); // 2ª passada engrossa o glow
+      ctx.restore();
+    } else {
+      ctx.fillText(l, cx, y);
+    }
+
     ctx.globalAlpha = 1;
     cy += hSize + 14;
   });
@@ -911,7 +995,7 @@ function drawCreative(t = 1, loop = 0) {
   const sub = $("#crSub").value.trim();
   if (sub) {
     const a = stage(0.5, 0.8);
-    ctx.globalAlpha = a;
+    ctx.globalAlpha = a * textCycle;
     ctx.font = `400 44px ${fBody}`;
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     wrapText(ctx, sub, Math.min(maxW, W * 0.78)).forEach((l) => {
@@ -930,7 +1014,7 @@ function drawCreative(t = 1, loop = 0) {
   const cw = ctx.measureText(cta).width + 120;
   const ctaX = centered ? cx - cw / 2 : cx;
   ctx.save();
-  ctx.globalAlpha = aCta;
+  ctx.globalAlpha = aCta * textCycle;
   ctx.translate(ctaX + cw / 2, cy + 54);
   ctx.scale(aCta * pulse, aCta * pulse);
   ctx.translate(-(ctaX + cw / 2), -(cy + 54));
@@ -1140,6 +1224,65 @@ $("#btnCrAiRefClear")?.addEventListener("click", () => {
   $("#crAiRefFile").value = "";
   toast("Referência removida ✕");
 });
+// 🌐 BUSCA REFERÊNCIA NA INTERNET: acha a imagem do item MAIS FAMOSO do
+// que foi descrito (ex.: "bob esponja" → o personagem, não uma esponja)
+// via Wikipédia (pt → en) e usa como base fiel da geração.
+async function crUploadRefDataUrl(dataUrl, statusLabel) {
+  $("#crAiRefThumb").src = dataUrl;
+  $("#crAiRefPreview").hidden = false;
+  $("#crAiRefStatus").textContent = "enviando…";
+  const base = window.PULSAR_BACKEND || "";
+  if (!base) throw new Error("backend não configurado");
+  const r = await fetch(base + "/api/upload-ref", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data: dataUrl }),
+  });
+  const j = await r.json();
+  if (!r.ok || !j.url) throw new Error(j.error || "HTTP " + r.status);
+  crAiRefUrl = j.url;
+  $("#crAiRefStatus").textContent = statusLabel || "✅ referência ativa (30 min)";
+  if ($("#crAiPrompt").value.trim()) $("#crAiPrompt").value = buildAiPrompt();
+}
+
+$("#btnCrAiWebRef")?.addEventListener("click", async () => {
+  const q = $("#crAiBrief")?.value.trim() || $("#crHeadline")?.value.trim() || "";
+  if (!q) return toast("Escreva primeiro no campo acima o que você quer criar ✍️");
+  const btn = $("#btnCrAiWebRef");
+  const lb = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "🌐 procurando o mais famoso…";
+  try {
+    const find = async (lang) => {
+      const u = `https://${lang}.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=3&prop=pageimages&piprop=thumbnail&pithumbsize=900&format=json&origin=*`;
+      const j = await (await fetch(u)).json();
+      const pages = j.query?.pages ? Object.values(j.query.pages).sort((a, b) => (a.index || 9) - (b.index || 9)) : [];
+      const p = pages.find((pg) => pg.thumbnail?.source);
+      return p ? { url: p.thumbnail.source, title: p.title } : null;
+    };
+    const hit = (await find("pt")) || (await find("en"));
+    if (!hit) throw new Error(`não achei nada famoso pra "${q}" — tente descrever de outro jeito`);
+    const img = await new Promise((res, rej) => {
+      const im = new Image();
+      im.crossOrigin = "anonymous";
+      im.onload = () => res(im);
+      im.onerror = () => rej(new Error("não consegui baixar a imagem de referência"));
+      im.src = hit.url;
+    });
+    const cv = document.createElement("canvas");
+    const sc = Math.min(1, 1024 / Math.max(img.naturalWidth, img.naturalHeight));
+    cv.width = Math.round(img.naturalWidth * sc);
+    cv.height = Math.round(img.naturalHeight * sc);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    await crUploadRefDataUrl(cv.toDataURL("image/jpeg", 0.88), "✅ base: " + hit.title);
+    toast(`🌐 Referência encontrada: ${hit.title} — a IA vai manter as características dessa base`);
+  } catch (e) {
+    toast("❌ " + (e.message || "falhou — tente de novo"));
+  }
+  btn.disabled = false;
+  btn.textContent = lb;
+});
+
 $("#crAiRefFile")?.addEventListener("change", async (e) => {
   const f = e.target.files[0];
   if (!f) return;
@@ -1231,7 +1374,7 @@ $$(".ai-btn[data-ai]").forEach((btn) => {
 
 // ---------- Gerador de imagem EMBUTIDO (grátis, sem login) ----------
 // usa a API pública do Pollinations (Flux); a imagem aparece direto no site
-const AI_IMG_NEGATIVE = "text, letters, words, typography, writing, numbers, caption, subtitle, watermark, signature, label, blurry, low quality, deformed hands, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, amputee, extra arms, extra legs, bad anatomy, malformed body, disfigured, distorted face, duplicate person, cloned face, mutated";
+const AI_IMG_NEGATIVE = "text, letters, words, typography, writing, numbers, caption, subtitle, watermark, signature, label, blurry, low quality, deformed hands, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, amputee, extra arms, extra legs, bad anatomy, malformed body, disfigured, distorted face, duplicate person, cloned face, mutated, poorly drawn hands, poorly drawn face, long neck, extra heads, malformed limbs, low resolution";
 const AI_IMG_NEGATIVE_REF = AI_IMG_NEGATIVE.replace("text, letters, words, typography, writing, numbers, caption, subtitle, watermark, signature, label, ", "watermark, signature, ");
 
 function pollUrl(prompt, seed, story, refUrl) {

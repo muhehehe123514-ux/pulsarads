@@ -475,7 +475,9 @@ kbd { font-family: Consolas, monospace; font-size: 11px; background: rgba(255, 2
    🪞 CARDS & MODAL ESTILO BIBLIOTECA DE ANÚNCIOS DO FACEBOOK
    (superfícies brancas fiéis ao FB dentro do tema dark)
    ============================================================ */
-.fbl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.fbl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1180px) { .fbl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .fbl-grid { grid-template-columns: 1fr; } }
 .fbl-results { grid-column: 1 / -1; font-weight: 700; font-size: 14.5px; color: var(--text); padding: 2px 2px 0; }
 .fbl-results-sub { color: var(--muted); font-weight: 500; }
 

@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Merriweather:wght@400;700;900&family=DM+Serif+Display&family=Anton&family=Archivo+Black&family=Chewy&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260714c" />
-  <link rel="stylesheet" href="css/app.css?v=20260714c" />
+  <link rel="stylesheet" href="css/style.css?v=20260714d" />
+  <link rel="stylesheet" href="css/app.css?v=20260714d" />
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 </head>
 <body class="app-body auth-locked">
@@ -378,13 +378,24 @@
                   </label>
                   <label>Animação simples
                     <select id="crVidAnim">
-                      <option value="slide">Entrada deslizante</option>
-                      <option value="zoom">Zoom cinematográfico</option>
-                      <option value="pulse">Gradiente vivo + pulso</option>
-                      <option value="float">Flutuar suave</option>
-                      <option value="shine">Brilho passando</option>
-                      <option value="kenburns">Ken Burns (pan + zoom)</option>
-                      <option value="bounce">Quique no botão</option>
+                      <optgroup label="🎬 Cena">
+                        <option value="slide">Entrada deslizante</option>
+                        <option value="zoom">Zoom cinematográfico</option>
+                        <option value="pulse">Gradiente vivo + pulso</option>
+                        <option value="float">Flutuar suave</option>
+                        <option value="shine">Brilho passando</option>
+                        <option value="kenburns">Ken Burns (pan + zoom)</option>
+                        <option value="bounce">Quique no botão</option>
+                        <option value="shake">💥 Impacto (tremida rítmica)</option>
+                      </optgroup>
+                      <optgroup label="💬 Texto (nível CapCut)">
+                        <option value="typewriter">⌨️ Título digitando (máquina de escrever)</option>
+                        <option value="wordpop">🫧 Palavras pulando uma a uma</option>
+                        <option value="wordslide">📥 Palavras deslizando da esquerda</option>
+                        <option value="glitch">📺 Glitch no título (RGB)</option>
+                        <option value="neon">💡 Neon pulsante no título</option>
+                        <option value="fadecycle">🔁 Textos entram e saem em ciclo</option>
+                      </optgroup>
                     </select>
                   </label>
                 </div>
@@ -446,6 +457,7 @@
           <div class="cr-ref-row">
             <input type="file" id="crAiRefFile" accept="image/png,image/jpeg,image/webp" hidden />
             <button type="button" class="btn btn-ghost btn-sm" id="btnCrAiRef">🖼️ Enviar imagem de referência (opcional)</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnCrAiWebRef" title="Acha a imagem mais famosa do que você descreveu (ex.: Bob Esponja = o personagem) e usa como base">🌐 Buscar referência na internet</button>
             <div class="cr-ref-preview" id="crAiRefPreview" hidden>
               <img id="crAiRefThumb" alt="referência" />
               <span id="crAiRefStatus">enviando…</span>
@@ -880,6 +892,7 @@
             <button class="btn btn-primary btn-sm" id="btnOpNext">▶ Abrir próxima pesquisa</button>
             <button class="btn btn-ghost btn-sm" id="btnOpAll">Abrir todas de uma vez</button>
             <button class="btn btn-ghost btn-sm" id="btnOpReset">Reiniciar fila</button>
+            <button class="btn btn-primary btn-sm" id="btnOpMore" hidden>🔎 Buscar mais ofertas (sem repetir)</button>
           </div>
           <div class="output-list" id="opSearchList"></div>
         </div>
@@ -1072,7 +1085,9 @@
               <select id="ltPrice">
                 <option value="19.90">R$ 19,90</option><option value="27" selected>R$ 27,00</option>
                 <option value="37">R$ 37,00</option><option value="47">R$ 47,00</option>
+                <option value="custom">💰 Personalizado…</option>
               </select>
+              <input type="number" id="ltPriceCustom" min="1" step="0.01" placeholder="Digite o preço, ex.: 14.90" hidden style="margin-top:8px" />
             </label>
             <div class="form-actions">
               <button class="btn btn-primary btn-sm" id="btnLtGenerate">Montar meu plano 🧭</button>
@@ -1120,18 +1135,18 @@
   <div class="toast" id="toast"></div>
   <div class="viz-tooltip" id="vizTooltip" hidden></div>
 
-  <script src="js/config.js?v=20260714c"></script>
-  <script src="js/extbridge.js?v=20260714c"></script>
-  <script src="js/app.js?v=20260714c"></script>
-  <script src="js/images.js?v=20260714c"></script>
-  <script src="js/tools2.js?v=20260714c"></script>
-  <script src="js/meta.js?v=20260714c"></script>
-  <script src="js/library.js?v=20260714c"></script>
-  <script src="js/ocr.js?v=20260714c"></script>
-  <script src="js/modelar.js?v=20260714c"></script>
-  <script src="js/auth.js?v=20260714c"></script>
-  <script src="js/tokens.js?v=20260714c"></script>
-  <script src="js/payments.js?v=20260714c"></script>
-  <script src="js/mirror.js?v=20260714c"></script>
+  <script src="js/config.js?v=20260714d"></script>
+  <script src="js/extbridge.js?v=20260714d"></script>
+  <script src="js/app.js?v=20260714d"></script>
+  <script src="js/images.js?v=20260714d"></script>
+  <script src="js/tools2.js?v=20260714d"></script>
+  <script src="js/meta.js?v=20260714d"></script>
+  <script src="js/library.js?v=20260714d"></script>
+  <script src="js/ocr.js?v=20260714d"></script>
+  <script src="js/modelar.js?v=20260714d"></script>
+  <script src="js/auth.js?v=20260714d"></script>
+  <script src="js/tokens.js?v=20260714d"></script>
+  <script src="js/payments.js?v=20260714d"></script>
+  <script src="js/mirror.js?v=20260714d"></script>
 </body>
 </html>

@@ -74,7 +74,7 @@ Agora recebe também vídeos, ticket real, site externo, nº de anúncios.
       niche: guessNiche((data.name || "") + " " + (data.text || "") + " " + (data.page || "")),
       hasVsl: data.hasVsl || /\bvsl\b|assista|v[ií]deo|youtube|youtu\.be|vimeo/i.test(data.text || ""),
       libUrl: data.libUrl || "",
-      status: "escalando",
+      status: "observando", // o status real vem do SCORE no preview
       statusActive: data.active !== false,
       platforms: data.platforms || [],
       versionsCount: data.versions || null,
