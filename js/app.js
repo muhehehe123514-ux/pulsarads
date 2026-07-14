@@ -1182,11 +1182,20 @@ const CR_RENDER_STYLES = {
   holografico: {
     name: "✨ Adesivo Holográfico / Colecionável",
     build: (subject) =>
-      `Fotografia macro de produto: um adesivo/pin/patch colecionável premium baseado em: ${subject}. ` +
-      `Material metálico holográfico com reflexos iridescentes que mudam com a luz, ou esmalte/bordado de altíssimo detalhe conforme o caso, ` +
-      `contorno recortado seguindo a silhueta do objeto, um canto sutilmente descolado revelando o material por baixo (se for adesivo), ` +
-      `centralizado sobre fundo preto sólido ou tecido premium escuro com textura visível, sombras suaves de profundidade, ` +
-      `fotografia de produto profissional, acabamento brilhante, realismo de material, 4k a 8k.`,
+      `Fotografia macro de produto premium: um adesivo colecionável die-cut de ${subject}. ` +
+      `Material holográfico iridescente com efeito de resina 3D (dome) — camada de verniz transparente arredondada que dá volume, ` +
+      `reflexos de arco-íris que mudam com a luz, glitter fino embutido nas áreas claras, contorno recortado seguindo exatamente a silhueta, ` +
+      `sobre fundo de metal escovado escuro ou tecido premium preto com textura visível, luz de estúdio lateral revelando o relevo da resina, ` +
+      `cores originais vivas e saturadas, fotografia de produto profissional, hiper detalhado, 8k.`,
+  },
+  reluzente: {
+    name: "🌟 Adesivo Reluzente (glitter/brilho)",
+    build: (subject) =>
+      `Fotografia macro de produto premium: adesivo die-cut RELUZENTE de ${subject}. ` +
+      `Vinil com camada de glitter fino por toda a arte e verniz UV super brilhante por cima, pontos de luz cintilando (sparkle bokeh), ` +
+      `contorno branco de adesivo recortado seguindo a silhueta, cores vivas e saturadas mantendo as cores originais do sujeito, ` +
+      `sobre fundo de tecido escuro premium com textura, iluminação de estúdio em ângulo que faz o brilho estourar em estrelas de luz, ` +
+      `fotografia de produto profissional de loja de colecionáveis, hiper detalhado, 8k.`,
   },
   cartoon3d: {
     name: "🧸 3D Animação (estilo Pixar)",
@@ -1206,6 +1215,32 @@ const CR_RENDER_STYLES = {
   },
 };
 $("#crRenderStyle").innerHTML = Object.entries(CR_RENDER_STYLES).map(([k, v], i) => `<option value="${k}"${i === 0 ? " selected" : ""}>${v.name}</option>`).join("");
+
+// dica do campo "detalhe" muda conforme o estilo (que produto? que adesivo? …)
+const CR_STYLE_DETAIL_PH = {
+  foto: "ex.: produto sobre mesa de mármore, fundo escuro",
+  cinema: "ex.: cercado por 4 personagens, clima de aventura",
+  produto3d: "QUE PRODUTO? ex.: caneca, pelúcia, action figure, camiseta, boneco…",
+  holografico: "adesivo de quê? ex.: personagem de corpo inteiro / só o logo / rosto",
+  reluzente: "adesivo de quê? ex.: personagem de corpo inteiro / só o logo",
+  cartoon3d: "ex.: personagem cozinhando na cozinha, cena divertida",
+  textura: "ex.: líquido dourado, fumaça roxa, água cristalina",
+};
+function crSyncStyleDetail() {
+  const inp = $("#crAiStyleDetail");
+  if (inp) inp.placeholder = CR_STYLE_DETAIL_PH[$("#crRenderStyle")?.value] || "detalhe opcional do estilo";
+}
+crSyncStyleDetail();
+$("#crAiStyleDetail")?.addEventListener("change", () => {
+  $("#crAiPrompt").value = buildAiPrompt();
+  toast("Detalhe aplicado ao prompt 🎯");
+});
+$("#crAiRefKind")?.addEventListener("change", () => {
+  if ($("#crAiPrompt").value.trim() || crAiRefUrl) {
+    $("#crAiPrompt").value = buildAiPrompt();
+    toast("Tipo da referência aplicado 🧭");
+  }
+});
 
 // texto que trava a IA de renderizar QUALQUER letra/número — repetido no início E no fim,
 // porque modelos de imagem tendem a ignorar restrições que aparecem só uma vez.
@@ -1255,14 +1290,25 @@ $("#btnCrAiWebRef")?.addEventListener("click", async () => {
   btn.disabled = true;
   btn.textContent = "🌐 procurando o mais famoso…";
   try {
-    const find = async (lang) => {
-      const u = `https://${lang}.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=3&prop=pageimages&piprop=thumbnail&pithumbsize=900&format=json&origin=*`;
+    const find = async (lang, term) => {
+      const u = `https://${lang}.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrlimit=3&prop=pageimages&piprop=thumbnail&pithumbsize=900&format=json&origin=*`;
       const j = await (await fetch(u)).json();
       const pages = j.query?.pages ? Object.values(j.query.pages).sort((a, b) => (a.index || 9) - (b.index || 9)) : [];
       const p = pages.find((pg) => pg.thumbnail?.source);
       return p ? { url: p.thumbnail.source, title: p.title } : null;
     };
-    const hit = (await find("pt")) || (await find("en"));
+    // o TIPO escolhido guia a busca: "personagem" acha o artigo do PERSONAGEM
+    // (imagem dele), e não o da série/marca (que costuma ser só o logo)
+    const kind = $("#crAiRefKind")?.value || "auto";
+    const tries = [];
+    if (kind === "personagem") tries.push(["pt", q + " personagem"], ["en", q + " character"]);
+    if (kind === "produto") tries.push(["pt", q + " produto"]);
+    tries.push(["pt", q], ["en", q]);
+    let hit = null;
+    for (const [lang, term] of tries) {
+      hit = await find(lang, term);
+      if (hit) break;
+    }
     if (!hit) throw new Error(`não achei nada famoso pra "${q}" — tente descrever de outro jeito`);
     const img = await new Promise((res, rej) => {
       const im = new Image();
@@ -1336,7 +1382,9 @@ function buildAiPrompt() {
   const themeName = (CR_THEMES[+$("#crTheme").value]?.name || "cores vibrantes").toLowerCase();
   const angle = (typeof md === "object" && md && md.idea) ? ` Ângulo de venda (só para inspirar a cena, NÃO escrever): ${md.idea}.` : "";
   const desc = o ? (o.desc || o.notes || "") : "";
-  const subject = (brief || (desc ? desc.replace(/\s+/g, " ").slice(0, 220) : `o produto "${headline}"`)) + angle;
+  const detail = $("#crAiStyleDetail")?.value.trim() || "";
+  const subject = (brief || (desc ? desc.replace(/\s+/g, " ").slice(0, 220) : `o produto "${headline}"`)) +
+    (detail ? `. FORMATO/TIPO obrigatório do resultado: ${detail}` : "") + angle;
 
   const styleKey = $("#crRenderStyle")?.value || "foto";
   const style = CR_RENDER_STYLES[styleKey] || CR_RENDER_STYLES.foto;
@@ -1348,8 +1396,15 @@ function buildAiPrompt() {
   const textLock = crAiRefUrl ? NO_TEXT_LOCK_REF : NO_TEXT_LOCK;
   // fidelidade TOTAL: com referência, as características do sujeito são LEI —
   // só mudam cenário, pose, iluminação e estilo. Se a referência veio da
-  // internet, o NOME famoso entra no prompt (a IA conhece e reproduz certo).
-  const refName = crAiRefTitle ? `O sujeito principal é ${crAiRefTitle}. ` : "";
+  // internet, o NOME famoso entra no prompt (a IA conhece e reproduz certo),
+  // qualificado pelo TIPO escolhido (personagem × logo × produto).
+  const refKind = $("#crAiRefKind")?.value || "auto";
+  const kindTxt = !crAiRefTitle ? "" :
+    refKind === "personagem" ? `o PERSONAGEM ${crAiRefTitle}, de corpo inteiro, com a aparência original completa e correta do personagem (não o logo da marca)` :
+    refKind === "logo" ? `o LOGOTIPO oficial de ${crAiRefTitle}, reproduzido fielmente com as letras e cores originais` :
+    refKind === "produto" ? `o produto ${crAiRefTitle}, com o design original` :
+    crAiRefTitle;
+  const refName = kindTxt ? `O sujeito principal é ${kindTxt}. ` : "";
   const refLead = crAiRefUrl
     ? `${refName}REGRA MÁXIMA de fidelidade à imagem de referência: preserve 100% das características originais do sujeito — formato do corpo, cores exatas, proporções, roupas, acessórios, rosto, dentes, olhos e textura (ex.: se é uma esponja quadrada amarela com furos, calça marrom e dois dentes grandes, TEM que continuar exatamente assim). Mude SOMENTE o que for pedido: cenário, pose, posição, iluminação e estilo de arte. `
     : "";
@@ -1363,6 +1418,7 @@ $("#btnCrAiBuild").addEventListener("click", () => {
 });
 // trocar o estilo SEMPRE recria o prompt na hora (apaga o antigo) — é só clicar em Gerar
 $("#crRenderStyle")?.addEventListener("change", () => {
+  crSyncStyleDetail();
   $("#crAiPrompt").value = buildAiPrompt();
   toast("Prompt refeito no novo estilo 🎨 — é só gerar");
 });
