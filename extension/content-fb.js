@@ -108,13 +108,13 @@
         if (valor >= 1 && valor <= 9999) price = valor;
       }
 
-      // PLATAFORMAS (ícones após o rótulo "Plataformas")
+      // PLATAFORMAS (ícones após o rótulo "Plataformas") — nunca sai do card
       var platforms = [];
       var blocks = textBlocks(card);
       for (var p = 0; p < blocks.length; p++) {
         if (/^Plataformas?$|^Platforms?$/i.test(blocks[p].t)) {
           var row = blocks[p].el.parentElement;
-          for (var up = 0; up < 3 && row; up++) {
+          for (var up = 0; up < 3 && row && card.contains(row); up++) {
             var icons = row.querySelectorAll('[style*="mask-image"], [style*="mask-position"]');
             if (icons.length) {
               platforms = PLAT_ORDER.slice(0, Math.min(icons.length, 6));
@@ -227,7 +227,7 @@
       var goodName = function (s) {
         s = (s || "").trim();
         if (s.length < 6) return "";
-        if (/^(apenas|s[óo]\b|por apenas|promo[çc][ãa]o|oferta|r\$|\d|saiba mais|compre|garanta|acesse|clique|link|www\.)/i.test(s)) return "";
+        if (/^(apenas|s[óo]\b|por apenas|promo[çc][ãa]o|oferta|r\$|\d|saiba mais|compre|garanta|acesse|clique|link|www\.|converse|fale conosco|envie|chama no|entre em contato)/i.test(s)) return "";
         if (/r\$\s*\d/i.test(s) && s.length < 34) return "";
         return s;
       };
@@ -262,7 +262,7 @@
       var tick = function () {
         var res = collectAds();
         // achou um bom lote OU esgotou as tentativas → devolve
-        if (res.ads.length >= 4 || tries > 10 || (res.ads.length && tries > 5)) { send(res); return; }
+        if (res.ads.length >= 4 || tries > 8 || (res.ads.length && tries > 4)) { send(res); return; }
         // rola a página pra forçar o carregamento dos próximos anúncios
         try { window.scrollBy(0, 1000); } catch (e) {}
         tries++;

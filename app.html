@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Merriweather:wght@400;700;900&family=DM+Serif+Display&family=Anton&family=Archivo+Black&family=Chewy&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260714b" />
-  <link rel="stylesheet" href="css/app.css?v=20260714b" />
+  <link rel="stylesheet" href="css/style.css?v=20260714c" />
+  <link rel="stylesheet" href="css/app.css?v=20260714c" />
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 </head>
 <body class="app-body auth-locked">
@@ -714,6 +714,18 @@
           <p class="hint">Escolha o plano, por quanto tempo vale (ou ♾️ vitalício) e gere o código — envie pra pessoa ativar na tela de planos. O código embute plano + duração e funciona em qualquer dispositivo (validação matemática, sem servidor). Na tabela abaixo você também dá/estende planos e <strong>revoga</strong> o acesso a qualquer momento.</p>
         </div>
         <div class="card">
+          <div class="card-head-row">
+            <h3>☁️ Usuários na nuvem (todos os cadastrados)</h3>
+            <button class="btn btn-ghost btn-sm" id="btnAdmCloudReload">↻ Recarregar</button>
+          </div>
+          <div class="form-grid">
+            <label>🔎 Buscar usuário pelo nome <input type="text" id="admCloudSearch" placeholder="digite o nome…" /></label>
+          </div>
+          <div class="output-list" id="admCloudList"><p class="hint">Clique em ↻ Recarregar pra listar os usuários do servidor.</p></div>
+          <p class="hint">Estas são as contas do servidor (valem em qualquer aparelho). <strong>Clique num usuário</strong> pra dar a licença Pro/Max direto pelo tempo escolhido — sem precisar de código. O gerador de código continua acima pra quem preferir enviar chave.</p>
+        </div>
+
+        <div class="card">
           <h3>Contas neste navegador</h3>
           <div class="table-wrap">
             <table class="data-table" id="admUsersTable">
@@ -1108,18 +1120,18 @@
   <div class="toast" id="toast"></div>
   <div class="viz-tooltip" id="vizTooltip" hidden></div>
 
-  <script src="js/config.js?v=20260714b"></script>
-  <script src="js/extbridge.js?v=20260714b"></script>
-  <script src="js/app.js?v=20260714b"></script>
-  <script src="js/images.js?v=20260714b"></script>
-  <script src="js/tools2.js?v=20260714b"></script>
-  <script src="js/meta.js?v=20260714b"></script>
-  <script src="js/library.js?v=20260714b"></script>
-  <script src="js/ocr.js?v=20260714b"></script>
-  <script src="js/modelar.js?v=20260714b"></script>
-  <script src="js/auth.js?v=20260714b"></script>
-  <script src="js/tokens.js?v=20260714b"></script>
-  <script src="js/payments.js?v=20260714b"></script>
-  <script src="js/mirror.js?v=20260714b"></script>
+  <script src="js/config.js?v=20260714c"></script>
+  <script src="js/extbridge.js?v=20260714c"></script>
+  <script src="js/app.js?v=20260714c"></script>
+  <script src="js/images.js?v=20260714c"></script>
+  <script src="js/tools2.js?v=20260714c"></script>
+  <script src="js/meta.js?v=20260714c"></script>
+  <script src="js/library.js?v=20260714c"></script>
+  <script src="js/ocr.js?v=20260714c"></script>
+  <script src="js/modelar.js?v=20260714c"></script>
+  <script src="js/auth.js?v=20260714c"></script>
+  <script src="js/tokens.js?v=20260714c"></script>
+  <script src="js/payments.js?v=20260714c"></script>
+  <script src="js/mirror.js?v=20260714c"></script>
 </body>
 </html>

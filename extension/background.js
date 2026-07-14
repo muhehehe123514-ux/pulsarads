@@ -5,7 +5,7 @@
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function waitComplete(tabId, ms = 16000) {
+function waitComplete(tabId, ms = 12000) {
   return new Promise((res) => {
     const done = () => { chrome.tabs.onUpdated.removeListener(l); res(); };
     const l = (id, info) => { if (id === tabId && info.status === "complete") done(); };
@@ -26,7 +26,7 @@ async function enrichFromSite(ad) {
   if (!ad.site || !/^https?:/i.test(ad.site)) return;
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 8000);
+    const t = setTimeout(() => ctrl.abort(), 6000);
     const r = await fetch(ad.site, { signal: ctrl.signal, redirect: "follow", credentials: "omit" });
     clearTimeout(t);
     const html = (await r.text()).slice(0, 500000);
@@ -62,14 +62,18 @@ async function mirrorSearch(queries, country) {
   const all = [];
   const seen = new Set();
   let total = null;
-  const qs = (queries || []).slice(0, 6);
+  // ORÇAMENTO DE TEMPO: o site espera a resposta — 4 termos no máximo e
+  // parada antecipada, senão a busca estoura o tempo e cai no modo manual.
+  const t0 = Date.now();
+  const qs = (queries || []).slice(0, 4);
   for (const q of qs) {
+    if (Date.now() - t0 > 75000 || all.length >= 16) break;
     const url = fbUrl(q, country);
     let tab;
     try {
       tab = await chrome.tabs.create({ url, active: false });
       await waitComplete(tab.id);
-      await sleep(3500); // deixa os anúncios renderizarem
+      await sleep(2500); // deixa os anúncios renderizarem
       let res = { ads: [] };
       try { res = await chrome.tabs.sendMessage(tab.id, { cmd: "scrapeFb" }); } catch (_) {}
       if (res && res.total && !total) total = res.total;
@@ -89,7 +93,7 @@ async function mirrorSearch(queries, country) {
   }
   // enriquece com o ticket real da página de vendas (em paralelo, sem travar)
   await Promise.allSettled(
-    all.filter((a) => a.site && (a.price == null || !a.hasVsl)).slice(0, 12).map(enrichFromSite)
+    all.filter((a) => a.site && (a.price == null || !a.hasVsl)).slice(0, 8).map(enrichFromSite)
   );
   return { ads: all, total };
 }

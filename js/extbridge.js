@@ -40,7 +40,7 @@
     const reqId = "r" + Date.now() + "_" + Math.random().toString(36).slice(2);
     pending[reqId] = (ads) => resolve(Array.isArray(ads) ? ads : (ads && ads.ads) || null);
     window.postMessage({ app: "pulsarads", cmd: "searchMirror", queries, country, reqId }, "*");
-    setTimeout(() => { if (pending[reqId]) { delete pending[reqId]; resolve(null); } }, 90000);
+    setTimeout(() => { if (pending[reqId]) { delete pending[reqId]; resolve(null); } }, 150000);
   });
 
   window.pulsarExtAvailable = () => window.PULSAR_EXT;

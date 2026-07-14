@@ -341,7 +341,95 @@ function ttsSynthesize(text, voice, rate, pitch, tryNum = 0) {
   });
 }
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, tts: true, ref: true }));
+app.get("/api/health", (_req, res) => res.json({ ok: true, tts: true, ref: true, admin: true }));
+
+/* ============================================================
+   👑 ADMIN — usuários na nuvem + licença direta
+   A senha do admin NUNCA está no código: só o hash PBKDF2 (o
+   mesmo do login do site). Cada chamada envia a senha no header
+   x-admin-pass e o servidor confere contra o hash.
+   ============================================================ */
+const ADMIN_PBKDF2 = "c8a28f0e30a29b364718af345a3ad2094af48b72ae4baf6ee703f7b83d00109b";
+function adminOk(req) {
+  const pass = String(req.headers["x-admin-pass"] || "");
+  if (!pass) return false;
+  const h = crypto.pbkdf2Sync(pass, "pulsar-salt-v1|" + ADMIN_USER, 100000, 32, "sha256").toString("hex");
+  const a = Buffer.from(h), b = Buffer.from(ADMIN_PBKDF2);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+async function listUsers() {
+  if (hasDB) {
+    const keys = (await up(["KEYS", "pulsar:user:*"])) || [];
+    const out = [];
+    for (const k of keys.slice(0, 500)) {
+      try {
+        const s = await up(["GET", k]);
+        if (!s) continue;
+        const rec = JSON.parse(s);
+        out.push({
+          user: k.replace("pulsar:user:", ""),
+          created: rec.created || null,
+          plan: planActive(rec) ? rec.plan : "free",
+          paidUntil: planActive(rec) ? rec.paidUntil : null,
+        });
+      } catch (_) {}
+    }
+    return out;
+  }
+  const d = loadFile();
+  return Object.keys(d)
+    .filter((k) => !k.startsWith("__tok_"))
+    .map((name) => {
+      const rec = d[name];
+      return { user: name, created: rec.created || null, plan: planActive(rec) ? rec.plan : "free", paidUntil: planActive(rec) ? rec.paidUntil : null };
+    });
+}
+
+app.get("/api/admin/users", async (req, res) => {
+  if (!adminOk(req)) return res.status(401).json({ error: "senha de admin inválida" });
+  try {
+    const q = String(req.query.q || "").toLowerCase().trim();
+    let users = await listUsers();
+    if (q) users = users.filter((u) => u.user.includes(q));
+    users.sort((a, b) => a.user.localeCompare(b.user));
+    res.json({ users: users.slice(0, 200), total: users.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/admin/grant", async (req, res) => {
+  if (!adminOk(req)) return res.status(401).json({ error: "senha de admin inválida" });
+  try {
+    const user = String(req.body?.user || "").trim().toLowerCase();
+    const plan = req.body?.plan === "max" ? "max" : "pro";
+    const dur = req.body?.days;
+    if (!user) return res.status(400).json({ error: "usuário vazio" });
+    const rec = dur === "vida"
+      ? await applyGrant(user, plan, { lifetime: true })
+      : await applyGrant(user, plan, { days: Math.max(1, Math.min(3650, parseInt(dur, 10) || 30)) });
+    res.json({ ok: true, user, plan: rec.plan, paidUntil: rec.paidUntil });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/admin/revoke", async (req, res) => {
+  if (!adminOk(req)) return res.status(401).json({ error: "senha de admin inválida" });
+  try {
+    const user = String(req.body?.user || "").trim().toLowerCase();
+    const rec = await getUser(user);
+    if (!rec) return res.status(404).json({ error: "usuário não encontrado no servidor" });
+    rec.plan = null;
+    rec.paidUntil = null;
+    rec.updated = new Date().toISOString();
+    await putUser(user, rec);
+    res.json({ ok: true, user, plan: "free" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 /* ============================================================
    🖼️ REFERÊNCIA DE IMAGEM pro Criativo IA

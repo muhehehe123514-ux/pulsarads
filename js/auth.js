@@ -241,6 +241,7 @@ $("#loginForm").addEventListener("submit", async (e) => {
   if (user === ADMIN_USER) {
     if (hash === ADMIN_HASH) {
       setSession({ user, ts: Date.now() });
+      try { sessionStorage.setItem("pulsar_adm", pass); } catch (_) {} // pro painel ☁️ de usuários
       toast("Bem-vindo de volta, chefe 👑");
       return enterApp();
     }
@@ -562,9 +563,123 @@ $("#admUsersTable").addEventListener("click", (e) => {
   }
 });
 
-// bloqueia o painel admin pra não-admin
+// ============================================================
+// ☁️ ADMIN NA NUVEM — todos os usuários do servidor, busca por
+// nome e licença direta (Pro/Max pelo tempo escolhido), além do
+// gerador de código que continua funcionando normalmente.
+// ============================================================
+let admCloudUsers = [];
+
+function admPass() {
+  let p = sessionStorage.getItem("pulsar_adm") || "";
+  if (!p) {
+    p = prompt("Confirme a senha do admin pra acessar os usuários na nuvem:") || "";
+    if (p) sessionStorage.setItem("pulsar_adm", p);
+  }
+  return p;
+}
+
+async function admApi(path, opts = {}) {
+  const base = window.PULSAR_BACKEND || "";
+  if (!base) throw new Error("backend não configurado");
+  const pass = admPass();
+  if (!pass) throw new Error("senha não informada");
+  const r = await fetch(base + path, {
+    ...opts,
+    headers: { "Content-Type": "application/json", "x-admin-pass": pass, ...(opts.headers || {}) },
+  });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { sessionStorage.removeItem("pulsar_adm"); throw new Error("senha de admin incorreta"); }
+  if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+  return j;
+}
+
+function admRenderCloud() {
+  const box = $("#admCloudList");
+  if (!box) return;
+  const q = ($("#admCloudSearch")?.value || "").toLowerCase().trim();
+  const list = admCloudUsers.filter((u) => !q || u.user.includes(q));
+  box.innerHTML = list.length
+    ? list.slice(0, 60).map((u) => {
+        const pill = u.plan === "max" ? '<span class="pill pill-on">🚀 Max</span>' : u.plan === "pro" ? '<span class="pill pill-on">⚡ Pro</span>' : '<span class="pill pill-off">grátis</span>';
+        const until = !u.paidUntil ? "" : u.paidUntil === "vida" ? " · ♾️ vitalício" : " · até " + u.paidUntil.split("-").reverse().join("/");
+        return `<div class="out-item adm-cloud-user" data-adm-open="${escHtml(u.user)}">
+          <div><span class="out-tag">${escHtml(u.user)}</span>
+          <div class="out-text">${pill}${until}${u.created ? " · criada em " + u.created.split("-").reverse().join("/") : ""}</div></div>
+          <div class="out-actions"><span class="hint">clique pra licenciar ▾</span></div>
+        </div>
+        <div class="adm-grant" data-adm-panel="${escHtml(u.user)}" hidden>
+          <label>Plano
+            <select data-g-plan><option value="pro">⚡ Pro</option><option value="max">🚀 Max</option></select>
+          </label>
+          <label>Duração
+            <select data-g-days>
+              <option value="7">7 dias</option><option value="15">15 dias</option>
+              <option value="30" selected>30 dias</option><option value="90">90 dias</option>
+              <option value="180">180 dias</option><option value="365">1 ano</option>
+              <option value="vida">♾️ Vitalício</option>
+            </select>
+          </label>
+          <button class="btn btn-primary btn-sm" data-g-apply="${escHtml(u.user)}">Aplicar licença ✅</button>
+          ${u.plan !== "free" ? `<button class="btn btn-ghost btn-sm btn-danger" data-g-revoke="${escHtml(u.user)}">⛔ Revogar</button>` : ""}
+        </div>`;
+      }).join("")
+    : `<p class="hint">${admCloudUsers.length ? "Nenhum usuário com esse nome." : "Nenhum usuário carregado — clique em ↻ Recarregar."}</p>`;
+}
+
+async function admLoadCloud() {
+  const box = $("#admCloudList");
+  if (!box) return;
+  box.innerHTML = '<p class="hint">☁️ Carregando usuários do servidor… (se ele estava dormindo, pode levar até 1 min)</p>';
+  try {
+    const j = await admApi("/api/admin/users");
+    admCloudUsers = j.users || [];
+    admRenderCloud();
+    toast(`☁️ ${admCloudUsers.length} usuário(s) no servidor`);
+  } catch (e) {
+    box.innerHTML = `<p class="hint">❌ ${escHtml(e.message)}</p>`;
+  }
+}
+
+$("#btnAdmCloudReload")?.addEventListener("click", admLoadCloud);
+$("#admCloudSearch")?.addEventListener("input", admRenderCloud);
+$("#admCloudList")?.addEventListener("click", async (e) => {
+  const open = e.target.closest("[data-adm-open]");
+  if (open) {
+    const p = document.querySelector(`[data-adm-panel="${CSS.escape(open.dataset.admOpen)}"]`);
+    if (p) p.hidden = !p.hidden;
+    return;
+  }
+  const apply = e.target.closest("[data-g-apply]");
+  if (apply) {
+    const user = apply.dataset.gApply;
+    const panel = apply.closest(".adm-grant");
+    const plan = panel.querySelector("[data-g-plan]").value;
+    const days = panel.querySelector("[data-g-days]").value;
+    apply.disabled = true;
+    try {
+      await admApi("/api/admin/grant", { method: "POST", body: JSON.stringify({ user, plan, days }) });
+      toast(`✅ ${user} agora é ${plan === "max" ? "🚀 Max" : "⚡ Pro"} ${days === "vida" ? "vitalício" : "por " + days + " dias"}`);
+      await admLoadCloud();
+    } catch (err) { toast("❌ " + err.message); }
+    apply.disabled = false;
+    return;
+  }
+  const rev = e.target.closest("[data-g-revoke]");
+  if (rev) {
+    if (!confirm(`Revogar o plano de "${rev.dataset.gRevoke}" no servidor agora?`)) return;
+    try {
+      await admApi("/api/admin/revoke", { method: "POST", body: JSON.stringify({ user: rev.dataset.gRevoke }) });
+      toast("⛔ Plano revogado no servidor");
+      await admLoadCloud();
+    } catch (err) { toast("❌ " + err.message); }
+  }
+});
+
+// bloqueia o painel admin pra não-admin · carrega a nuvem ao entrar (se a senha já está na sessão)
 window.addEventListener("hashchange", () => {
   if (location.hash === "#admin" && !isAdmin()) location.hash = "meta";
+  if (location.hash === "#admin" && isAdmin() && !admCloudUsers.length && sessionStorage.getItem("pulsar_adm")) admLoadCloud();
 });
 
 // expiração automática: re-checa o plano a cada troca de tela e a cada minuto,
