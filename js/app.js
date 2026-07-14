@@ -1181,21 +1181,27 @@ const CR_RENDER_STYLES = {
   },
   holografico: {
     name: "✨ Adesivo Holográfico / Colecionável",
+    flat: true, // resultado TEM que ser adesivo plano, nunca boneco/objeto 3D
+    neg: "3d figure, figurine, action figure, toy, sculpture, statue, plush, doll, diorama, standing 3d object, volumetric character",
     build: (subject) =>
-      `Fotografia macro de produto premium: um adesivo colecionável die-cut de ${subject}. ` +
-      `Material holográfico iridescente com efeito de resina 3D (dome) — camada de verniz transparente arredondada que dá volume, ` +
-      `reflexos de arco-íris que mudam com a luz, glitter fino embutido nas áreas claras, contorno recortado seguindo exatamente a silhueta, ` +
-      `sobre fundo de metal escovado escuro ou tecido premium preto com textura visível, luz de estúdio lateral revelando o relevo da resina, ` +
-      `cores originais vivas e saturadas, fotografia de produto profissional, hiper detalhado, 8k.`,
+      `Die-cut holographic vinyl STICKER (adesivo PLANO) de ${subject}. ` +
+      `A arte é uma ILUSTRAÇÃO 2D vibrante impressa em vinil holográfico — adesivo fino e totalmente plano, visto de frente, ` +
+      `borda branca die-cut seguindo a silhueta, reflexos iridescentes de arco-íris na superfície, verniz de resina fina brilhante, ` +
+      `um canto levemente descolado provando que é um adesivo, apoiado sobre fundo de metal escovado escuro, ` +
+      `fotografia macro de produto profissional, hiper detalhado, 8k. flat sticker, 2d artwork printed on vinyl — ` +
+      `NÃO é boneco, NÃO é action figure, NÃO é escultura 3D.`,
   },
   reluzente: {
     name: "🌟 Adesivo Reluzente (glitter/brilho)",
+    flat: true,
+    neg: "3d figure, figurine, action figure, toy, sculpture, statue, plush, doll, diorama, standing 3d object, volumetric character",
     build: (subject) =>
-      `Fotografia macro de produto premium: adesivo die-cut RELUZENTE de ${subject}. ` +
-      `Vinil com camada de glitter fino por toda a arte e verniz UV super brilhante por cima, pontos de luz cintilando (sparkle bokeh), ` +
-      `contorno branco de adesivo recortado seguindo a silhueta, cores vivas e saturadas mantendo as cores originais do sujeito, ` +
-      `sobre fundo de tecido escuro premium com textura, iluminação de estúdio em ângulo que faz o brilho estourar em estrelas de luz, ` +
-      `fotografia de produto profissional de loja de colecionáveis, hiper detalhado, 8k.`,
+      `Die-cut glitter vinyl STICKER (adesivo PLANO reluzente) de ${subject}. ` +
+      `A arte é uma ILUSTRAÇÃO 2D vibrante impressa no vinil — adesivo fino e totalmente plano, camada de glitter fino por toda a arte ` +
+      `e verniz UV super brilhante por cima, pontos de luz cintilando (sparkle), borda branca die-cut seguindo a silhueta, ` +
+      `cores originais vivas e saturadas, apoiado sobre tecido escuro premium com textura, luz de estúdio em ângulo estourando brilhos em estrela, ` +
+      `fotografia macro de produto de loja de colecionáveis, hiper detalhado, 8k. flat sticker, 2d artwork printed on vinyl — ` +
+      `NÃO é boneco, NÃO é action figure, NÃO é escultura 3D.`,
   },
   cartoon3d: {
     name: "🧸 3D Animação (estilo Pixar)",
@@ -1408,7 +1414,12 @@ function buildAiPrompt() {
   const refLead = crAiRefUrl
     ? `${refName}REGRA MÁXIMA de fidelidade à imagem de referência: preserve 100% das características originais do sujeito — formato do corpo, cores exatas, proporções, roupas, acessórios, rosto, dentes, olhos e textura (ex.: se é uma esponja quadrada amarela com furos, calça marrom e dois dentes grandes, TEM que continuar exatamente assim). Mude SOMENTE o que for pedido: cenário, pose, posição, iluminação e estilo de arte. `
     : "";
-  return `${refLead}${cap(textLock)}. ${scene} IMPORTANTE, sem exceções: ${textLock}; ${ANATOMY_LOCK}; sem objetos derretidos ou distorcidos.`;
+  // trava de FORMATO: estilos de adesivo têm que sair PLANOS (a referência
+  // fotográfica tende a puxar pra "boneco 3D" — isso aqui impede)
+  const flatLock = style.flat
+    ? " REGRA FINAL DE FORMATO: o resultado é um ADESIVO PLANO (flat 2D die-cut sticker) fotografado — a arte é ilustração 2D impressa; NUNCA um boneco, brinquedo, action figure ou objeto 3D em pé."
+    : "";
+  return `${refLead}${cap(textLock)}. ${scene} IMPORTANTE, sem exceções: ${textLock}; ${ANATOMY_LOCK}; sem objetos derretidos ou distorcidos.${flatLock}`;
 }
 
 $("#btnCrAiBuild").addEventListener("click", () => {
@@ -1446,8 +1457,10 @@ function pollUrl(prompt, seed, story, refUrl) {
   const h = story ? 1920 : 1080;
   // enhance: o Pollinations refina o prompt no servidor (menos distorção, mais realismo)
   // — mas com REFERÊNCIA o enhance reescreve demais e dilui a fidelidade, então sai.
-  // negative_prompt: reforço extra contra texto renderizado e anatomia errada.
-  const neg = refUrl ? AI_IMG_NEGATIVE_REF : AI_IMG_NEGATIVE;
+  // negative_prompt: reforço contra texto/anatomia errada + o negativo do ESTILO
+  // (ex.: estilos de adesivo proíbem boneco/figura 3D).
+  const styleNeg = (CR_RENDER_STYLES[$("#crRenderStyle")?.value] || {}).neg || "";
+  const neg = (refUrl ? AI_IMG_NEGATIVE_REF : AI_IMG_NEGATIVE) + (styleNeg ? ", " + styleNeg : "");
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&private=true&model=flux&seed=${seed}` +
     (refUrl ? `&image=${encodeURIComponent(refUrl)}` : `&enhance=true`) +
     `&negative_prompt=${encodeURIComponent(neg)}`;
