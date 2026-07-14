@@ -44,8 +44,18 @@ Agora recebe também vídeos, ticket real, site externo, nº de anúncios.
     const posters = (data.posters || []).filter(Boolean).slice(0, 3);
     if (!videos.length && !imgs.length && posters.length) imgs.push(...posters);
 
+    const goodName = (s) => {
+      s = (s || "").trim();
+      if (s.length < 6) return "";
+      if (/^(apenas|s[óo]\b|por apenas|promo[çc][ãa]o|oferta|r\$|\d|saiba mais|compre|garanta|acesse|clique|link|www\.)/i.test(s)) return "";
+      if (/r\$\s*\d/i.test(s) && s.length < 34) return "";
+      return s;
+    };
+    const nameCand = goodName(data.name) || goodName(data.headline) ||
+      (data.text || "").split("\n").map(goodName).find(Boolean) || data.page || "Oferta do Facebook";
+
     const offer = {
-      name: (data.name || data.headline || data.page || "Oferta do Facebook").slice(0, 90),
+      name: nameCand.slice(0, 90),
       advertiser: data.page || data.advertiser || "",
       avatarUrl: data.avatar || "",
       imgUrls: imgs,

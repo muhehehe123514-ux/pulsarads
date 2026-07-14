@@ -247,24 +247,48 @@ $("#btnBlocked").addEventListener("click", () => {
 // ============================================================
 // 6) TEXTO ESTILIZADO (Unicode)
 // ============================================================
+// letras que o Unicode "pulou" nos blocos matemáticos (viram quadradinho sem isso)
+const UNI_FIX = {
+  "\u{1D455}": "ℎ",
+  "\u{1D506}": "ℭ", "\u{1D50B}": "ℌ", "\u{1D50C}": "ℑ", "\u{1D515}": "ℜ", "\u{1D51D}": "ℨ",
+  "\u{1D53A}": "ℂ", "\u{1D53F}": "ℍ", "\u{1D545}": "ℕ", "\u{1D547}": "ℙ", "\u{1D548}": "ℚ", "\u{1D549}": "ℝ", "\u{1D551}": "ℤ",
+};
+const SMALLCAPS = { a: "ᴀ", b: "ʙ", c: "ᴄ", d: "ᴅ", e: "ᴇ", f: "ꜰ", g: "ɢ", h: "ʜ", i: "ɪ", j: "ᴊ", k: "ᴋ", l: "ʟ", m: "ᴍ", n: "ɴ", o: "ᴏ", p: "ᴘ", q: "ǫ", r: "ʀ", s: "ꜱ", t: "ᴛ", u: "ᴜ", v: "ᴠ", w: "ᴡ", x: "x", y: "ʏ", z: "ᴢ" };
+
 const STYLE_MAPS = [
   { name: "Negrito", up: 0x1d5d4, low: 0x1d5ee, dig: 0x1d7ec },
   { name: "Itálico", up: 0x1d608, low: 0x1d622, dig: null },
   { name: "Negrito itálico", up: 0x1d63c, low: 0x1d656, dig: null },
   { name: "Serifado negrito", up: 0x1d400, low: 0x1d41a, dig: 0x1d7ce },
+  { name: "Serifado itálico", up: 0x1d434, low: 0x1d44e, dig: null },
+  { name: "Serifado negrito itálico", up: 0x1d468, low: 0x1d482, dig: null },
   { name: "Manuscrito", up: 0x1d4d0, low: 0x1d4ea, dig: null },
+  { name: "Gótico", up: 0x1d504, low: 0x1d51e, dig: null },
+  { name: "Gótico negrito", up: 0x1d56c, low: 0x1d586, dig: null },
   { name: "Monoespaçado", up: 0x1d670, low: 0x1d68a, dig: 0x1d7f6 },
   { name: "Contornado", up: 0x1d538, low: 0x1d552, dig: 0x1d7d8 },
+  { name: "Largura total", up: 0xff21, low: 0xff41, dig: 0xff10 },
+  { name: "Versalete (small caps)", fn: (ch, c) => (c >= 97 && c <= 122 ? SMALLCAPS[ch] : c >= 65 && c <= 90 ? SMALLCAPS[ch.toLowerCase()] : ch) },
+  { name: "Circulado", fn: (ch, c) => { if (c >= 65 && c <= 90) return String.fromCodePoint(0x24b6 + (c - 65)); if (c >= 97 && c <= 122) return String.fromCodePoint(0x24d0 + (c - 97)); if (c === 48) return "⓪"; if (c >= 49 && c <= 57) return String.fromCodePoint(0x2460 + (c - 49)); return ch; } },
+  { name: "Quadrado", fn: (ch, c) => { if (c >= 65 && c <= 90) return String.fromCodePoint(0x1f130 + (c - 65)) + " "; if (c >= 97 && c <= 122) return String.fromCodePoint(0x1f130 + (c - 97)) + " "; return ch; } },
+  { name: "Riscado", join: "̶" },
+  { name: "Sublinhado", join: "̲" },
+  { name: "Espaçado", fn: (ch) => (/\s/.test(ch) ? ch : ch + " ") },
 ];
 
 function styleText(text, map) {
-  return [...text]
+  if (map.join) return [...text].map((ch) => (/\s/.test(ch) ? ch : ch + map.join)).join("");
+  // acentos não existem nos blocos estilizados: "á" vira "a" estilizado
+  const base = text.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return [...base]
     .map((ch) => {
       const c = ch.codePointAt(0);
-      if (c >= 65 && c <= 90) return String.fromCodePoint(map.up + (c - 65));
-      if (c >= 97 && c <= 122) return String.fromCodePoint(map.low + (c - 97));
-      if (map.dig && c >= 48 && c <= 57) return String.fromCodePoint(map.dig + (c - 48));
-      return ch;
+      if (map.fn) return map.fn(ch, c);
+      let g = null;
+      if (c >= 65 && c <= 90) g = String.fromCodePoint(map.up + (c - 65));
+      else if (c >= 97 && c <= 122) g = String.fromCodePoint(map.low + (c - 97));
+      else if (map.dig && c >= 48 && c <= 57) g = String.fromCodePoint(map.dig + (c - 48));
+      return g ? (UNI_FIX[g] || g) : ch;
     })
     .join("");
 }
@@ -979,13 +1003,17 @@ function buildAiPrompt() {
   const desc = o ? (o.desc || o.notes || "") : "";
   const subject = brief || (desc ? desc.replace(/\s+/g, " ").slice(0, 220) : `o produto "${headline}"`);
 
-  return `Anúncio publicitário profissional de alta conversão, ${format}. ` +
+  // IA de imagem distorce texto — então o prompt pede imagem LIMPA, com espaço
+  // negativo pro título entrar depois no 🎨 Estúdio (zero letra deformada).
+  return `Fotografia publicitária premium para anúncio de alta conversão, formato ${format}. ` +
     `Cena principal: ${subject}.` + angle + ` ` +
-    `Fotografia comercial de alto padrão: iluminação de estúdio com softbox, luz de contorno sutil, profundidade de campo rasa (aparência de lente 85mm), foco nítido no produto, cores ricas em paleta ${themeName}. ` +
-    `Composição pela regra dos terços, com espaço livre ${space} para o texto. ` +
-    `Inclua o título em português do Brasil "${headline}" em tipografia bold e legível, e um botão de call-to-action "${cta}". ` +
-    `Clima aspiracional e apetitoso, gradação de cor profissional, altíssimo detalhe, 4k. ` +
-    `Sem marca d'água, sem texto distorcido, sem erros de ortografia.`;
+    `Estilo: foto comercial de estúdio profissional — lente 85mm f/1.8, foco cravado no produto, ` +
+    `profundidade de campo rasa com fundo suavemente desfocado, iluminação de softbox com luz de contorno sutil, ` +
+    `paleta de cores ${themeName}, composição na regra dos terços com espaço negativo limpo ${space} para o título entrar depois. ` +
+    `Qualidade: fotorrealista, ultra detalhado, gradação de cor de cinema, nitidez de capa de revista, 8k. ` +
+    `IMPORTANTE: sem NENHUM texto, sem letras, sem números, sem logotipo, sem marca d'água, ` +
+    `sem mãos ou dedos deformados, sem objetos derretidos ou distorcidos — imagem limpa e realista. ` +
+    `(Referência de título que entrará depois por cima: "${headline}" com botão "${cta}".)`;
 }
 
 $("#btnCrAiBuild").addEventListener("click", () => {
@@ -1010,9 +1038,10 @@ $$(".ai-btn[data-ai]").forEach((btn) => {
 // ---------- Gerador de imagem EMBUTIDO (grátis, sem login) ----------
 // usa a API pública do Pollinations (Flux); a imagem aparece direto no site
 function pollUrl(prompt, seed, story) {
-  const w = story ? 1024 : 1024;
-  const h = story ? 1820 : 1024;
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&model=flux&seed=${seed}`;
+  const w = story ? 1080 : 1080;
+  const h = story ? 1920 : 1080;
+  // enhance=true: o Pollinations refina o prompt no servidor (menos distorção, mais realismo)
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&private=true&enhance=true&model=flux&seed=${seed}`;
 }
 
 $("#btnCrAiGen")?.addEventListener("click", () => {
@@ -1192,98 +1221,103 @@ if (document.fonts?.ready) document.fonts.ready.then(renderCreative);
 renderCreative();
 
 // ============================================================
-// 12) GERADOR DE ÁUDIO (Web Speech — TTS)
+// 12) GERADOR DE ÁUDIO — VOZ NEURAL HUMANA (Pollinations, grátis)
+// Nunca usa vozes do Google nem vozes robóticas. Fallback: só vozes
+// "(Natural)" do sistema (Edge/Windows); sem elas, orienta o usuário.
 // ============================================================
 const synth = window.speechSynthesis;
 let voices = [];
 
-// só as vozes NEURAIS/naturais em português (as mais realistas)
-const NEURAL_RE = /natural|neural|online|google|multilingual|premium|enhanced|siri|wavenet|luciana|thalita|francisca|antonio|brenda|donato|fabio|giovanna|leila|leticia|manuela|valerio|nicolau|humberto|julio|elza|yara|macerio|expressiv/i;
-// nomes tipicamente femininos/masculinos das vozes neurais pt-BR/pt-PT
-const FEMALE_RE = /female|mulher|luciana|thalita|francisca|brenda|maria|giovanna|leila|leticia|manuela|heloisa|fernanda|joana|ana|camila|yara|raquel|elza/i;
-const MALE_RE = /male|homem|antonio|donato|fabio|julio|ricardo|daniel|valerio|nicolau|humberto|duarte|cristiano|felipe|paulo|macerio/i;
+// vozes neurais da API (openai-audio via Pollinations) — humanas de verdade
+const TTS_NEURAL_VOICES = {
+  female: [
+    ["nova", "Nova — feminina neural ⭐"],
+    ["shimmer", "Shimmer — feminina suave"],
+    ["coral", "Coral — feminina expressiva"],
+  ],
+  male: [
+    ["onyx", "Onyx — masculina neural ⭐"],
+    ["echo", "Echo — masculina firme"],
+    ["ash", "Ash — masculina jovem"],
+  ],
+};
+const TTS_TONE_HINT = { animada: " com tom animado e energético", normal: "", calma: " com tom calmo e acolhedor" };
 
-// quanto mais natural, maior a pontuação (Natural/Online/Neural no topo)
-function voiceQuality(v) {
-  const n = v.name.toLowerCase();
-  let q = 0;
-  if (/natural/.test(n)) q += 100;
-  if (/online/.test(n)) q += 80;
-  if (/neural|wavenet/.test(n)) q += 70;
-  if (/google/.test(n)) q += 50;
-  if (/multilingual|premium|enhanced|expressiv/.test(n)) q += 40;
-  if (/pt-?br/i.test(v.lang)) q += 10; // prioriza pt-BR sobre pt-PT
-  return q;
-}
-// tom → velocidade/pitch (nem rápido nem devagar no "normal")
-const TTS_TONES = { animada: { rate: 1.12, pitch: 1.12 }, normal: { rate: 1.0, pitch: 1.0 }, calma: { rate: 0.9, pitch: 0.92 } };
-
-let ttsNeural = [];
-function ttsGenderOf(v) {
-  if (FEMALE_RE.test(v.name)) return "female";
-  if (MALE_RE.test(v.name)) return "male";
-  return "unknown";
-}
-
-function loadVoices() {
-  voices = synth ? synth.getVoices() : [];
-  const sel = $("#ttsVoice");
-  if (!sel) return;
-  if (!voices.length) { sel.innerHTML = `<option>Carregando vozes…</option>`; return; }
-  const pt = voices.filter((v) => v.lang.toLowerCase().startsWith("pt"));
-  let neural = pt.filter((v) => NEURAL_RE.test(v.name));
-  let note = "";
-  if (!neural.length) {
-    neural = pt.length ? pt : voices.slice(0, 8);
-    note = pt.length
-      ? "Seu sistema não tem voz neural instalada — usando as melhores vozes em português disponíveis. Pra vozes neurais, use o Edge ou instale vozes 'Natural' nas configurações de fala do Windows."
-      : "Nenhuma voz em português neste navegador — use o Chrome ou o Edge.";
-  }
-  ttsNeural = neural;
-  renderTtsVoiceSelect();
-  const hint = $("#ttsHint");
-  if (hint && note) hint.textContent = note;
-}
-
-// filtra as vozes pelo gênero escolhido, ordena pela mais natural e preenche o select
 function renderTtsVoiceSelect() {
   const sel = $("#ttsVoice");
   if (!sel) return;
   const gender = $("#ttsGender")?.value || "female";
-  let list = ttsNeural.filter((v) => ttsGenderOf(v) === gender);
-  if (!list.length) list = ttsNeural.slice(); // não deu pra classificar: mostra todas
-  list.sort((a, b) => voiceQuality(b) - voiceQuality(a)); // as mais naturais primeiro
-  sel.innerHTML = list
-    .map((v) => {
-      const star = voiceQuality(v) >= 70 ? " ⭐" : "";
-      return `<option value="${escHtml(v.name)}">${escHtml(v.name.replace(/microsoft/i, "").trim())} ${/pt.?br/i.test(v.lang) ? "🇧🇷" : "🇵🇹"}${star}</option>`;
-    })
-    .join("");
-  // já seleciona a mais natural
-  if (list.length) sel.value = list[0].name;
+  sel.innerHTML = TTS_NEURAL_VOICES[gender].map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
 }
-
-if (synth) {
-  loadVoices();
-  synth.onvoiceschanged = loadVoices;
-}
+renderTtsVoiceSelect();
 $("#ttsGender")?.addEventListener("change", renderTtsVoiceSelect);
 
-$("#btnTtsPlay").addEventListener("click", () => {
-  if (!synth) return toast("Seu navegador não suporta síntese de voz 😕");
-  const text = $("#ttsInput").value.trim();
+// fallback local: SÓ vozes "(Natural)" — nunca Google, nunca robótica
+function bestNaturalLocalVoice() {
+  voices = synth ? synth.getVoices() : [];
+  const pt = voices.filter((v) => v.lang.toLowerCase().startsWith("pt") && !/google/i.test(v.name) && /natural/i.test(v.name));
+  const gender = $("#ttsGender")?.value || "female";
+  const FEM = /female|thalita|francisca|brenda|giovanna|leila|leticia|manuela|yara|elza|luciana/i;
+  return pt.find((v) => (gender === "female" ? FEM.test(v.name) : !FEM.test(v.name))) || pt[0] || null;
+}
+
+let ttsAudio = null;
+let ttsBlobUrl = null;
+
+$("#btnTtsPlay").addEventListener("click", async () => {
+  let text = $("#ttsInput").value.trim();
   if (!text) return toast("Escreva um texto primeiro ✍️");
-  synth.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  const v = voices.find((v) => v.name === $("#ttsVoice").value);
-  if (v) u.voice = v;
-  const tone = TTS_TONES[$("#ttsTone")?.value] || TTS_TONES.normal;
-  u.rate = tone.rate;
-  u.pitch = tone.pitch;
-  synth.speak(u);
-  toast(`Reproduzindo 🔊 (${$("#ttsGender")?.value === "male" ? "masculina" : "feminina"}, ${$("#ttsTone")?.value || "normal"})`);
+  if (text.length > 1200) { text = text.slice(0, 1200); toast("Texto longo: narrando os primeiros 1.200 caracteres 🎙️"); }
+  const voice = $("#ttsVoice").value || "nova";
+  const tone = TTS_TONE_HINT[$("#ttsTone")?.value] ?? "";
+  const btn = $("#btnTtsPlay");
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "⏳ Gerando voz neural…";
+  if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
+  synth?.cancel();
+  try {
+    const payload = `Leia em voz alta, em português do Brasil${tone}, exatamente o texto a seguir, sem adicionar nem comentar nada:\n\n${text}`;
+    const url = `https://text.pollinations.ai/${encodeURIComponent(payload)}?model=openai-audio&voice=${voice}`;
+    const r = await fetch(url);
+    if (!r.ok || !/audio/i.test(r.headers.get("content-type") || "")) throw new Error("HTTP " + r.status);
+    const blob = await r.blob();
+    if (ttsBlobUrl) URL.revokeObjectURL(ttsBlobUrl);
+    ttsBlobUrl = URL.createObjectURL(blob);
+    ttsAudio = new Audio(ttsBlobUrl);
+    ttsAudio.play();
+    const dl = $("#btnTtsDl");
+    if (dl) dl.hidden = false;
+    toast(`Voz neural reproduzindo 🔊 (${$("#ttsGender")?.value === "male" ? "masculina" : "feminina"})`);
+  } catch (err) {
+    // sem internet/API: usa APENAS voz Natural do sistema (nunca Google)
+    const v = bestNaturalLocalVoice();
+    if (synth && v) {
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = v;
+      synth.speak(u);
+      toast("Sem conexão com a voz neural — usando a voz Natural do seu sistema 🔊");
+    } else {
+      toast("Não consegui gerar a voz neural agora 😕 Verifique a internet e tente de novo.");
+    }
+  }
+  btn.disabled = false;
+  btn.textContent = label;
 });
-$("#btnTtsStop").addEventListener("click", () => synth?.cancel());
+
+$("#btnTtsStop").addEventListener("click", () => {
+  if (ttsAudio) ttsAudio.pause();
+  synth?.cancel();
+});
+
+$("#btnTtsDl")?.addEventListener("click", () => {
+  if (!ttsBlobUrl) return toast("Gere a narração primeiro ▶");
+  const a = document.createElement("a");
+  a.href = ttsBlobUrl;
+  a.download = "pulsarads-narracao-" + Date.now() + ".mp3";
+  a.click();
+  toast("Narração baixada 🎧");
+});
 
 // ============================================================
 // 13) TRANSCRITOR POR VOZ (Web Speech — STT)

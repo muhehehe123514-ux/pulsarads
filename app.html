@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260713b" />
-  <link rel="stylesheet" href="css/app.css?v=20260713b" />
+  <link rel="stylesheet" href="css/style.css?v=20260713c" />
+  <link rel="stylesheet" href="css/app.css?v=20260713c" />
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 </head>
 <body class="app-body auth-locked">
@@ -459,7 +459,7 @@
           <div class="form-actions">
             <button type="button" class="btn btn-primary" id="btnCrAiGen">🎨 Gerar criativo grátis (aparece aqui)</button>
           </div>
-          <p class="hint">Gera direto no site, sem login e sem sair — em segundos o criativo aparece embaixo. É grátis e ilimitado (conta como 1 uso por geração).</p>
+          <p class="hint">Gera direto no site, sem login e sem sair — em segundos o criativo aparece embaixo. É grátis e ilimitado (conta como 1 uso por geração). <strong>As imagens saem limpas, sem texto</strong> — é isso que elimina letras distorcidas; o título e o botão você coloca depois com "Usar no criativo" (o Estúdio acima escreve o texto perfeito por cima).</p>
           <div class="ai-results" id="crAiResults"></div>
 
           <details class="ai-external">
@@ -629,13 +629,14 @@
                 <option value="calma">😌 Mais calma</option>
               </select>
             </label>
-            <label>Voz neural detectada <select id="ttsVoice"></select></label>
+            <label>Voz neural <select id="ttsVoice"></select></label>
           </div>
           <div class="form-actions">
-            <button class="btn btn-primary btn-sm" id="btnTtsPlay">▶ Reproduzir</button>
+            <button class="btn btn-primary btn-sm" id="btnTtsPlay">▶ Gerar e reproduzir</button>
             <button class="btn btn-ghost btn-sm" id="btnTtsStop">⏹ Parar</button>
+            <button class="btn btn-ghost btn-sm" id="btnTtsDl" hidden>⬇ Baixar MP3</button>
           </div>
-          <p class="hint" id="ttsHint">Mostramos só as vozes neurais em português (as naturais, tipo "Google português do Brasil", "Microsoft Thalita/Francisca Online (Natural)"). Pra gravar, use o gravador do sistema enquanto reproduz.</p>
+          <p class="hint" id="ttsHint">Vozes 100% neurais e humanas — sem voz de robô e sem vozes do Google. A narração é gerada na hora, grátis, e você pode <strong>baixar o MP3</strong> pra usar nos seus vídeos e criativos.</p>
         </div>
       </section>
 
@@ -1101,18 +1102,18 @@
   <div class="toast" id="toast"></div>
   <div class="viz-tooltip" id="vizTooltip" hidden></div>
 
-  <script src="js/config.js?v=20260713b"></script>
-  <script src="js/extbridge.js?v=20260713b"></script>
-  <script src="js/app.js?v=20260713b"></script>
-  <script src="js/images.js?v=20260713b"></script>
-  <script src="js/tools2.js?v=20260713b"></script>
-  <script src="js/meta.js?v=20260713b"></script>
-  <script src="js/library.js?v=20260713b"></script>
-  <script src="js/ocr.js?v=20260713b"></script>
-  <script src="js/modelar.js?v=20260713b"></script>
-  <script src="js/auth.js?v=20260713b"></script>
-  <script src="js/tokens.js?v=20260713b"></script>
-  <script src="js/payments.js?v=20260713b"></script>
-  <script src="js/mirror.js?v=20260713b"></script>
+  <script src="js/config.js?v=20260713c"></script>
+  <script src="js/extbridge.js?v=20260713c"></script>
+  <script src="js/app.js?v=20260713c"></script>
+  <script src="js/images.js?v=20260713c"></script>
+  <script src="js/tools2.js?v=20260713c"></script>
+  <script src="js/meta.js?v=20260713c"></script>
+  <script src="js/library.js?v=20260713c"></script>
+  <script src="js/ocr.js?v=20260713c"></script>
+  <script src="js/modelar.js?v=20260713c"></script>
+  <script src="js/auth.js?v=20260713c"></script>
+  <script src="js/tokens.js?v=20260713c"></script>
+  <script src="js/payments.js?v=20260713c"></script>
+  <script src="js/mirror.js?v=20260713c"></script>
 </body>
 </html>

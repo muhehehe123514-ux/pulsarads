@@ -63,20 +63,63 @@ const MD_PUBLICS = [
   "profissionais ocupados", "iniciantes que têm medo de errar", "quem quer resultado sem aparecer/gravar vídeo",
 ];
 
-// cada ângulo é um "gancho de venda" completo (nome do produto + promessa + público)
+// ============================================================
+// ASSUNTO DA OFERTA: descobre O QUE ela vende a partir do nome
+// e da descrição — nome tipo "APENAS R$9,90" nunca vira assunto.
+// ============================================================
+function mdSubject(o) {
+  const clean = (s) => (s || "").replace(/[✀-➿\ud83c-􏰀-\udfff☀-⛿️]/g, "").replace(/\s+/g, " ").trim();
+  const junk = (s) => !s || s.length < 8 ||
+    /^(apenas|s[óo]\b|por apenas|promo[çc][ãa]o|oferta|r\$|\d|saiba mais|garanta|acesse|clique|compre|www\.)/i.test(s) ||
+    /r\$\s*\d/i.test(s);
+  let n = clean(o.name);
+  if (!junk(n)) return n.slice(0, 70);
+  const d = clean((o.desc || "") + " " + (o.notes || ""));
+  const pats = [
+    /(?:voc[êe] recebe|voc[êe] vai receber|voc[êe] ganha|acesso a|libere|leve)\s+([^.!?]{10,80})/i,
+    /(\+?\d{2,4}\s+(?:artes?|receitas?|moldes?|modelos?|templates?|planilhas?|atividades?|aulas?|cifras?|m[úu]sicas?|treinos?)[^.!?]{0,50})/i,
+    /((?:pack|kit|apostila|curso|guia|planilha|manual|m[ée]todo|ebook|e-book|caderno|planner|combo|desafio|protocolo)[^.!?]{5,60})/i,
+  ];
+  for (const p of pats) {
+    const m = d.match(p);
+    if (m) {
+      let s = clean(m[1]);
+      if (s.length > 45 && s.includes(",")) s = s.split(",")[0]; // corta enfeite
+      return s.slice(0, 70);
+    }
+  }
+  if (o.niche >= 0 && NICHES[o.niche]) return NICHES[o.niche].kws[0];
+  return n || "sua oferta";
+}
+
+// preço da oferta com fallback: campo → copy ("por apenas R$ 9,90") → padrão
+function mdPriceNum(o) {
+  if (o && o.price != null && !isNaN(o.price) && o.price > 0) return +o.price;
+  const d = (o && (o.desc || "")) || "";
+  const pm = d.match(/R\$\s*(\d{1,3}(?:[.,]\d{1,2})?)/) ||
+             d.match(/(?:por\s+)?(?:apenas|somente|s[óo])\s+(\d{1,3}[.,]\d{2})/i);
+  if (pm) { const v = parseFloat(pm[1].replace(",", ".")); if (v >= 1 && v <= 9999) return v; }
+  return null;
+}
+const mdPriceFmt = (o) => {
+  const v = mdPriceNum(o);
+  return v != null ? "R$ " + v.toFixed(2).replace(".", ",") : "R$ 27,00";
+};
+
+// cada ângulo é um "gancho de venda" completo — t é SEMPRE o produto/assunto limpo
 const MD_ANGLES = [
-  (t, p) => `O atalho de 7 dias: "${cap(t)}" condensado no essencial pra ${p} verem o 1º resultado já na primeira semana.`,
-  (t, p) => `O anti-erro: "Os 5 erros que travam ${p} em ${t}" — ângulo de curiosidade + medo, converte no tráfego frio.`,
-  (t, p) => `Do zero mastigado: "${cap(t)}" explicado sem UM termo técnico, no passo a passo à prova de iniciante — feito pra ${p}.`,
-  (t, p) => `O método com nome próprio: batize o sistema (ex.: "Método Pulso") e venda o MÉTODO, não o tema — autoridade instantânea com ${p}.`,
-  (t, p) => `Encaixa na rotina: "${cap(t)} em 15 min/dia" — mostra exatamente onde ${p} encaixam na manhã, no intervalo ou à noite.`,
-  (t, p) => `Sem a parte chata: "${cap(t)} sem a etapa que todo mundo odeia" — você promete remover a maior fricção que ${p} enfrentam.`,
-  (t, p) => `A transformação visível: antes/depois real de quem aplicou "${t}" — prova concreta que ${p} conseguem enxergar em si.`,
-  (t, p) => `O desafio guiado: transforme "${t}" num desafio de 21 dias com check-list diário — gamifica e segura ${p} até o resultado.`,
-  (t, p) => `O kit pra imprimir: "${cap(t)}" em material físico-digital (PDF pra imprimir) — ${p} amam algo palpável na mão.`,
-  (t, p) => `A objeção-título: "E se você acha que não tem tempo/talento pra ${t}?" — quebra na headline o que mais impede ${p} de comprar.`,
-  (t, p) => `O upgrade de status: posicione "${t}" como o que faz ${p} serem admirados por quem está por perto.`,
-  (t, p) => `O combo família: versão pra fazer em dupla/família — dobra o valor percebido e o motivo de compra pra ${p}.`,
+  (t, p) => `Atalho dos 7 dias: reposicione "${t}" como o caminho mais rápido pra ${p} terem o primeiro resultado em uma semana.`,
+  (t, p) => `Anti-erro: venda "${t}" como a solução pros 5 erros que mais travam ${p} — curiosidade + medo converte no tráfego frio.`,
+  (t, p) => `Zero mastigado: apresente "${t}" como passo a passo à prova de iniciante, sem nenhum termo técnico — feito pra ${p}.`,
+  (t, p) => `Método com nome próprio: batize "${t}" (ex.: "Método Pulso") e venda o MÉTODO, não o material — autoridade instantânea com ${p}.`,
+  (t, p) => `Encaixa na rotina: mostre como ${p} usam "${t}" em só 15 minutos por dia — de manhã, no intervalo ou à noite.`,
+  (t, p) => `Sem a parte chata: prometa que "${t}" elimina a etapa que ${p} mais odeiam — começar do zero, sozinho, sem modelo pronto.`,
+  (t, p) => `Transformação visível: mostre o antes/depois real de quem já usou "${t}" — prova concreta que ${p} conseguem enxergar em si.`,
+  (t, p) => `Desafio guiado: transforme "${t}" num desafio de 21 dias com checklist diário — gamifica e segura ${p} até o resultado.`,
+  (t, p) => `Kit palpável: destaque que "${t}" pode ser impresso/usado na hora — ${p} amam material pronto na mão.`,
+  (t, p) => `Objeção no título: "E se você acha que não tem tempo nem talento?" — quebre na headline o que mais impede ${p} de comprar "${t}".`,
+  (t, p) => `Upgrade de status: posicione "${t}" como o que faz ${p} serem admirados e elogiados por quem está por perto.`,
+  (t, p) => `Combo família: crie uma versão de "${t}" pra fazer em dupla/família — dobra o valor percebido pra ${p}.`,
 ];
 
 $("#btnMdIdeas").addEventListener("click", () => {
@@ -84,7 +127,8 @@ $("#btnMdIdeas").addEventListener("click", () => {
   md.idx = +$("#mdOffer").value;
   md.offer = offers[md.idx];
   if (!md.offer) return toast("Salve uma oferta real na 📚 Biblioteca primeiro");
-  const topic = md.offer.name.toLowerCase();
+  md.topic = mdSubject(md.offer);
+  const topic = md.topic;
   const pubs = [...MD_PUBLICS].sort(() => Math.random() - 0.5);
   const angles = [...MD_ANGLES].sort(() => Math.random() - 0.5);
   md.ideas = angles.slice(0, 8).map((fn, i) => fn(topic, pubs[i % pubs.length]));
@@ -130,22 +174,22 @@ $("#btnMdPickIdea").addEventListener("click", () => {
 // passo 3: PROMESSAS (v2 — específicas, com prazo e quebra de objeção)
 // ============================================================
 function mdGenProms() {
-  const raw = md.offer.name;
-  const t = raw.toLowerCase();
-  const price = md.offer.price ? "R$ " + (+md.offer.price).toFixed(2).replace(".", ",") : "R$ 27,00";
+  const t = md.topic || mdSubject(md.offer);
+  md.topic = t;
+  const price = mdPriceFmt(md.offer);
   const nicheName = md.offer.niche >= 0 && NICHES[md.offer.niche] ? NICHES[md.offer.niche].name.toLowerCase() : "sua área";
 
-  // banco grande e variado; sorteia 6 estruturas diferentes
+  // banco grande e variado; sorteia 6 estruturas diferentes — t é o produto/assunto limpo
   const bank = [
-    `Saia do zero e tenha seu primeiro resultado em ${t} em até 7 dias — mesmo sem nenhuma experiência e com só 15 minutos por dia.`,
-    `Um passo a passo tão direto que você aplica hoje e já vê diferença essa semana, sem depender de talento, tempo sobrando ou equipamento caro.`,
-    `Pare de juntar informação solta: aqui você recebe o caminho exato, na ordem certa, pra dominar ${t} sem se perder no meio.`,
-    `O método que corta 80% do que não importa e te entrega só o que faz ${nicheName} realmente acontecer — resultado rápido, sem enrolação.`,
-    `Destrave o que trava 9 em cada 10 iniciantes: você vai saber exatamente o que fazer quando empacar, com apoio pra tirar toda dúvida.`,
-    `Tudo pronto pra começar agora: material completo, acesso imediato e garantia de 7 dias — por menos que uma pizza (${price}).`,
-    `Transforme ${t} numa rotina simples de encaixar no seu dia — e prove pra você mesmo que dá certo, com risco zero graças à garantia.`,
-    `De frustrado a confiante: você troca a tentativa e erro por um mapa testado, feito pra quem quer resultado sem complicação.`,
-    `A forma mais rápida e barata de finalmente ter ${t} funcionando — mesmo que você já tenha tentado antes e desistido.`,
+    `Saia do zero com ${t} e tenha seu primeiro resultado em até 7 dias — mesmo sem experiência e com só 15 minutos por dia.`,
+    `Um material tão direto que você aplica hoje e já vê diferença essa semana, sem depender de talento, tempo sobrando ou equipamento caro.`,
+    `Pare de juntar informação solta: com ${t} você recebe o caminho exato, na ordem certa, sem se perder no meio.`,
+    `Corte 80% do que não importa: ${t} entrega só o que faz ${nicheName} realmente acontecer — resultado rápido, sem enrolação.`,
+    `Destrave o que trava 9 em cada 10 iniciantes: com ${t} você sabe exatamente o que fazer quando empacar, com apoio pra tirar dúvidas.`,
+    `Tudo pronto pra começar agora: ${t} completo, acesso imediato e garantia de 7 dias — por menos que uma pizza (${price}).`,
+    `Encaixe ${t} na sua rotina em minutos por dia — e prove pra você mesmo que dá certo, com risco zero graças à garantia.`,
+    `De frustrado a confiante: troque a tentativa e erro por ${t} — um mapa testado, feito pra quem quer resultado sem complicação.`,
+    `A forma mais rápida e barata de ter resultado com ${t} — mesmo que você já tenha tentado antes e desistido.`,
   ];
   md.proms = [...bank].sort(() => Math.random() - 0.5).slice(0, 6);
   md.prom = null;
@@ -177,17 +221,25 @@ $("#btnMdPickProm").addEventListener("click", () => {
 // passo 4: headline & subheadline
 // ============================================================
 function mdGenHeads() {
-  const t = md.offer.name;
+  const t = md.topic || mdSubject(md.offer);
+  md.topic = t;
+  const price = mdPriceFmt(md.offer);
+  // núcleo da promessa sem repetir o nome do produto na mesma frase
+  let core = (md.prom || "").split(" — ")[0].split(":").pop().replace(/\.$/, "").trim();
+  if (!core || core.toLowerCase().includes(t.toLowerCase().slice(0, Math.min(14, t.length)))) {
+    core = "seu primeiro resultado em até 7 dias, começando do zero";
+  }
   const H = [
-    `${cap(t)}: ${md.prom.split(" — ")[0].split(":").pop().replace(/\.$/, "").trim()}`,
-    `Finalmente: ${t.toLowerCase()} do jeito simples, com resultado em dias — não em meses`,
-    `O caminho mais curto pra ${t.toLowerCase()} (mesmo que você já tenha tentado antes)`,
+    `${cap(t)}: ${core.charAt(0).toLowerCase() + core.slice(1)}`,
+    `Finalmente: ${t} do jeito simples — resultado em dias, não em meses`,
+    `O caminho mais curto pra ter resultado com ${t} (mesmo que você já tenha tentado antes)`,
     `${cap(t)} sem enrolação: o passo a passo que funciona pra quem começa do zero`,
+    `Chega de tentar sozinho: ${t} completo, com garantia de 7 dias, por ${price}`,
   ];
   const S = [
     `${md.prom} Acesso imediato após a compra.`,
     `Um método testado, direto ao ponto, com garantia incondicional de 7 dias. O risco é todo nosso.`,
-    `Material completo pra você aplicar hoje mesmo — e ver o primeiro resultado ainda essa semana.`,
+    `Material completo por ${price} pra você aplicar hoje mesmo — e ver o primeiro resultado ainda essa semana.`,
   ];
   md.headline = pick(H);
   md.sub = pick(S);
@@ -321,8 +373,9 @@ function secCta(price) {
 
 function buildSalesPage() {
   const o = md.offer;
-  const price = o.price ? (+o.price).toFixed(2).replace(".", ",") : "27,00";
-  const name = o.name;
+  const priceNum = mdPriceNum(o) ?? 27;
+  const price = priceNum.toFixed(2).replace(".", ",");
+  const name = (md.topic && md.topic.length > 7) ? md.topic : o.name;
   const nicheName = o.niche >= 0 && NICHES[o.niche] ? NICHES[o.niche].name : "seu nicho";
   const bonus = [
     ["🎁 Bônus 1 — Guia de Início Rápido", `Um resumo de 1 página pra você aplicar ${name.toLowerCase()} hoje mesmo, sem ler tudo antes.`],
@@ -468,6 +521,7 @@ $("#btnMdPage").addEventListener("click", () => {
 window.ltBuildSalesPage = (plan) => {
   md.idx = null;
   md.offer = { name: plan.name, price: plan.price, niche: plan.niche, img: "" };
+  md.topic = plan.name;
   md.headline = plan.headline || plan.name;
   md.sub = plan.sub || "";
   md.prom = plan.sub || "";

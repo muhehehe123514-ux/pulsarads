@@ -548,8 +548,18 @@ var ctaM = T.match(/^(Saiba mais|Comprar agora|Cadastre-se|Enviar mensagem|Fale 
 var domM = T.match(/\\b([A-Z0-9][-A-Z0-9]*\\.[A-Z]{2,}(?:\\.[A-Z]{2,})?)\\b/);
 var domain = (domM && !/FACEBOOK|INSTAGRAM|FBCDN/.test(domM[1])) ? domM[1] : '';
 
-// NOME DO ANÚNCIO (primeira linha da copy ou nome da página)
-var name = ((text.split('\\n')[0] || page || 'Oferta').trim()).slice(0, 90);
+// NOME DO ANÚNCIO — pula linhas de preço/CTA ("APENAS R$9,90" não é nome)
+var goodName = function(s){
+  s = (s || '').trim();
+  if(s.length < 6) return '';
+  if(/^(apenas|s[óo]\\b|por apenas|promo[çc][ãa]o|oferta|r\\$|\\d|saiba mais|compre|garanta|acesse|clique|link|www\\.)/i.test(s)) return '';
+  if(/r\\$\\s*\\d/i.test(s) && s.length < 34) return '';
+  return s;
+};
+var name = '';
+var nmLines = text.split('\\n');
+for(var nl = 0; nl < nmLines.length && !name; nl++) name = goodName(nmLines[nl]);
+name = (name || page || 'Oferta').slice(0, 90);
 
 if(!U.length && !V.length && !page){
   alert('Não achei mídia nem anunciante neste modal. Tente clicar em outro anúncio.');
@@ -635,9 +645,16 @@ window.libAddOffer = (o) => {
   const today = new Date().toISOString().slice(0, 10);
   const name = (o.name || "").trim() || "Oferta sem nome";
   let idx = offers.findIndex((x) => x.name.trim().toLowerCase() === name.toLowerCase());
+  // ticket: se não veio, tenta achar na copy ("por apenas R$ 9,90", "apenas 27,00")
+  let price = o.price ?? null;
+  if (price == null && o.desc) {
+    const pm = o.desc.match(/R\$\s*(\d{1,3}(?:[.,]\d{1,2})?)/) ||
+               o.desc.match(/(?:por\s+)?(?:apenas|somente|s[óo])\s+(\d{1,3}[.,]\d{2})/i);
+    if (pm) { const v = parseFloat(pm[1].replace(",", ".")); if (v >= 1 && v <= 9999) price = v; }
+  }
   const base = {
     name, advertiser: o.advertiser || "", niche: o.niche != null ? o.niche : -1, country: o.country || "BR",
-    ads: o.ads ?? null, price: o.price ?? null, funnel: o.funnel || (o.hasVsl ? "VSL" : "Página de vendas direta"),
+    ads: o.ads ?? null, price, funnel: o.funnel || (o.hasVsl ? "VSL" : "Página de vendas direta"),
     status: o.status || "observando", format: o.format || "", lang: o.lang || "", desc: o.desc || "",
     fbPage: o.fbPage || "", site: o.site || "", creative: o.creative || (o.imgUrls && o.imgUrls[0]) || (o.videoUrls && o.videoUrls[0]) || "",
     url: o.libUrl || o.url || "", avatarUrl: o.avatarUrl || "",

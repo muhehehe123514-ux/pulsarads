@@ -510,8 +510,15 @@ function renderPreviewModal(o, ctx = {}) {
     days = Math.max(1, Math.round((Date.now() - new Date(o.firstSeen + "T12:00:00").getTime()) / 86400000));
   }
 
-  const published = o.firstSeen ? o.firstSeen.split("-").reverse().join("/") : (o.published || null);
-  const ticket = (o.price && !isNaN(o.price) && o.price > 0) ? "R$ " + (+o.price).toFixed(2).replace(".", ",") : null;
+  const published = o.published || (o.firstSeen ? o.firstSeen.split("-").reverse().join("/") : null);
+  let priceVal = (o.price && !isNaN(o.price) && o.price > 0) ? +o.price : null;
+  if (priceVal == null && o.desc) {
+    // fallback: caça o preço na própria copy ("por apenas R$ 9,90", "apenas 27,00")
+    const pm = o.desc.match(/R\$\s*(\d{1,3}(?:[.,]\d{1,2})?)/) ||
+               o.desc.match(/(?:por\s+)?(?:apenas|somente|s[óo])\s+(\d{1,3}[.,]\d{2})/i);
+    if (pm) { const v = parseFloat(pm[1].replace(",", ".")); if (v >= 1 && v <= 9999) priceVal = v; }
+  }
+  const ticket = priceVal != null ? "R$ " + priceVal.toFixed(2).replace(".", ",") : null;
 
   let score = 0;
   let scoreDetails = [];

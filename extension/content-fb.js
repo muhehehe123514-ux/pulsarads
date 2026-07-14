@@ -223,9 +223,24 @@
       var hasVsl = videos.length > 0 ||
                    /\bvsl\b|assista ao v[ií]deo|youtube\.com|youtu\.be|vimeo\.com/i.test(text);
 
+      // nome BOM = descreve o produto; preço/CTA/promoção não servem de nome
+      var goodName = function (s) {
+        s = (s || "").trim();
+        if (s.length < 6) return "";
+        if (/^(apenas|s[óo]\b|por apenas|promo[çc][ãa]o|oferta|r\$|\d|saiba mais|compre|garanta|acesse|clique|link|www\.)/i.test(s)) return "";
+        if (/r\$\s*\d/i.test(s) && s.length < 34) return "";
+        return s;
+      };
+      var nameCand = goodName(headline);
+      if (!nameCand) {
+        var lines = text.split("\n");
+        for (var ln = 0; ln < lines.length && !nameCand; ln++) nameCand = goodName(lines[ln]);
+      }
+      if (!nameCand) nameCand = page || "Oferta";
+
       if (imgs.length || videos.length || page) {
         out.push({
-          name: (headline || (text.split("\n")[0] || page || "Oferta")).trim().slice(0, 90),
+          name: nameCand.slice(0, 90),
           page: page, pageUrl: pageUrl, avatar: avatar,
           imgs: imgs.slice(0, 8),
           videos: videos.slice(0, 3),
