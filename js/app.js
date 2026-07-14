@@ -552,25 +552,6 @@ window.addEventListener("hashchange", () => { if (location.hash === "#escala") r
 renderScaleLive();
 
 // ============================================================
-// 10) RADAR DE CONCORRENTES (bibliotecas oficiais)
-// ============================================================
-$$(".radar-card").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const q = encodeURIComponent($("#spyQuery").value.trim());
-    const country = $("#spyCountry").value;
-    let url = "";
-    if (btn.dataset.lib === "meta") {
-      url = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=${country}&q=${q}&search_type=keyword_unordered&media_type=all`;
-    } else if (btn.dataset.lib === "google") {
-      url = `https://adstransparency.google.com/?region=${country === "ALL" ? "anywhere" : country}${q ? `&query=${q}` : ""}`;
-    } else {
-      url = `https://library.tiktok.com/ads?region=${country === "ALL" ? "all" : country}&adv_name=${q}&query_type=1`;
-    }
-    window.open(url, "_blank", "noopener");
-  });
-});
-
-// ============================================================
 // 11) ESTÚDIO DE CRIATIVOS (Canvas)
 // ============================================================
 const CR_THEMES = [
@@ -987,6 +968,66 @@ function refreshCrAiOffers() {
   if (cur && sel.querySelector(`option[value="${cur}"]`)) sel.value = cur;
 }
 
+// ---------- Estilos de renderização profissional (baseado em referências de mercado) ----------
+// cada estilo define como a CENA é fotografada/renderizada — não o tema de cor do Estúdio ao lado
+const CR_RENDER_STYLES = {
+  foto: {
+    name: "📷 Fotorrealista (estúdio)",
+    build: (subject, themeName, space) =>
+      `Fotografia publicitária premium de alta conversão. Cena principal: ${subject}. ` +
+      `Foto comercial de estúdio profissional — lente 85mm f/1.8, foco cravado no assunto, profundidade de campo rasa ` +
+      `com fundo suavemente desfocado, iluminação de softbox com luz de contorno sutil, paleta de cores ${themeName}, ` +
+      `composição na regra dos terços com espaço vazio limpo ${space}. Fotorrealista, ultra detalhado, gradação de cor de cinema, 8k.`,
+  },
+  cinema: {
+    name: "🎬 Cinematográfico (grupo/mashup)",
+    build: (subject) =>
+      `Retrato cinematográfico estilo selfie/grupo, câmera grande angular em perspectiva dramática. Cena: ${subject}. ` +
+      `Composição: assunto principal em primeiro plano, elementos/personagens de apoio dispostos ao redor em profundidade em camadas, ` +
+      `enquadramento apertado e coeso. Iluminação de contraste cinematográfico: luz fria de ambiente + luz quente pontual criando volume, ` +
+      `sombras dramáticas volumétricas. Estilo: humanos hiper-realistas com leve toque estilizado onde houver personagens ilustrados, ultra detalhado, ` +
+      `visual de cinema de terror/aventura, foco nítido no rosto principal, anatomia correta e consistente, sem membros extras, sem rostos duplicados.`,
+  },
+  produto3d: {
+    name: "📦 Produto Premium 3D (cápsula/vitrine)",
+    build: (subject) =>
+      `Render 3D cinematográfico ultra-realista de embalagem/vitrine premium para: ${subject}. ` +
+      `Objeto principal flutuando no ar com sombra suave abaixo, materiais em metal polido brilhante e vidro acrílico cristalino transparente, ` +
+      `composição centralizada minimalista sobre fundo abstrato elegante com gradiente sutil, reflexos realistas de vidro e metal, ` +
+      `iluminação de estúdio dramática com brilho volumétrico, texturas hiper detalhadas, alto alcance dinâmico, resolução 8k, realismo extremo.`,
+  },
+  holografico: {
+    name: "✨ Adesivo Holográfico / Colecionável",
+    build: (subject) =>
+      `Fotografia macro de produto: um adesivo/pin/patch colecionável premium baseado em: ${subject}. ` +
+      `Material metálico holográfico com reflexos iridescentes que mudam com a luz, ou esmalte/bordado de altíssimo detalhe conforme o caso, ` +
+      `contorno recortado seguindo a silhueta do objeto, um canto sutilmente descolado revelando o material por baixo (se for adesivo), ` +
+      `centralizado sobre fundo preto sólido ou tecido premium escuro com textura visível, sombras suaves de profundidade, ` +
+      `fotografia de produto profissional, acabamento brilhante, realismo de material, 4k a 8k.`,
+  },
+  cartoon3d: {
+    name: "🧸 3D Animação (estilo Pixar)",
+    build: (subject) =>
+      `Cena 3D estilo animação de estúdio (tipo Pixar/Dreamworks) em render cinematográfico. Cena: ${subject}. ` +
+      `Personagens/objetos com proporções estilizadas e texturas realistas suaves, iluminação quente e aconchegante vinda de janela ou fonte natural, ` +
+      `profundidade de campo suave com fundo levemente desfocado, cores saturadas e vívidas, composição centralizada, sombras suaves, ` +
+      `renderização estilo Pixar ultra detalhada, sem distorção, sem membros extras, anatomia e proporções corretas, alta definição.`,
+  },
+  textura: {
+    name: "🌊 Textura Abstrata Premium (fundo)",
+    build: (subject) =>
+      `Fundo/textura abstrata premium em close-up macro para uso em design: ${subject}. ` +
+      `Padrão fluido e orgânico com alto nível de detalhe — pode ser líquido metálico, plástico amassado, água fractal, tinta ou fumaça, ` +
+      `cores vibrantes e contrastantes com reflexos de luz dramáticos, composição abstrata sem elementos figurativos, ` +
+      `iluminação de estúdio criando profundidade e brilho, fotografia macro ultra nítida, 8k, qualidade de banco de imagens premium.`,
+  },
+};
+$("#crRenderStyle").innerHTML = Object.entries(CR_RENDER_STYLES).map(([k, v], i) => `<option value="${k}"${i === 0 ? " selected" : ""}>${v.name}</option>`).join("");
+
+// texto que trava a IA de renderizar QUALQUER letra/número — repetido no início E no fim,
+// porque modelos de imagem tendem a ignorar restrições que aparecem só uma vez.
+const NO_TEXT_LOCK = "absolutamente sem nenhum texto, sem letras, sem números, sem palavras, sem tipografia, sem logotipo, sem marca d'água, sem legendas, sem assinatura — a imagem deve ficar 100% limpa de qualquer caractere escrito";
+
 // ---------- Criador de prompts PROFISSIONAIS (imagem) ----------
 function buildAiPrompt() {
   const sel = $("#crAiOffer");
@@ -994,32 +1035,29 @@ function buildAiPrompt() {
   const o = sel && sel.value !== "" ? offers[+sel.value] : null;
   const brief = $("#crAiBrief")?.value.trim() || "";
   const headline = $("#crHeadline").value.trim() || (o ? o.name : "Sua oferta em destaque");
-  const cta = ($("#crCta").value.trim() || "QUERO AGORA").toUpperCase();
   const story = $("#crFormat").value === "story";
-  const format = story ? "vertical 9:16 (story/reels)" : "quadrado 1:1 (feed)";
   const space = story ? "no terço superior" : "à esquerda ou no topo";
   const themeName = (CR_THEMES[+$("#crTheme").value]?.name || "cores vibrantes").toLowerCase();
-  const angle = (typeof md === "object" && md && md.idea) ? ` Ângulo de venda: ${md.idea}.` : "";
+  const angle = (typeof md === "object" && md && md.idea) ? ` Ângulo de venda (só para inspirar a cena, NÃO escrever): ${md.idea}.` : "";
   const desc = o ? (o.desc || o.notes || "") : "";
-  const subject = brief || (desc ? desc.replace(/\s+/g, " ").slice(0, 220) : `o produto "${headline}"`);
+  const subject = (brief || (desc ? desc.replace(/\s+/g, " ").slice(0, 220) : `o produto "${headline}"`)) + angle;
 
-  // IA de imagem distorce texto — então o prompt pede imagem LIMPA, com espaço
-  // negativo pro título entrar depois no 🎨 Estúdio (zero letra deformada).
-  return `Fotografia publicitária premium para anúncio de alta conversão, formato ${format}. ` +
-    `Cena principal: ${subject}.` + angle + ` ` +
-    `Estilo: foto comercial de estúdio profissional — lente 85mm f/1.8, foco cravado no produto, ` +
-    `profundidade de campo rasa com fundo suavemente desfocado, iluminação de softbox com luz de contorno sutil, ` +
-    `paleta de cores ${themeName}, composição na regra dos terços com espaço negativo limpo ${space} para o título entrar depois. ` +
-    `Qualidade: fotorrealista, ultra detalhado, gradação de cor de cinema, nitidez de capa de revista, 8k. ` +
-    `IMPORTANTE: sem NENHUM texto, sem letras, sem números, sem logotipo, sem marca d'água, ` +
-    `sem mãos ou dedos deformados, sem objetos derretidos ou distorcidos — imagem limpa e realista. ` +
-    `(Referência de título que entrará depois por cima: "${headline}" com botão "${cta}".)`;
+  const styleKey = $("#crRenderStyle")?.value || "foto";
+  const style = CR_RENDER_STYLES[styleKey] || CR_RENDER_STYLES.foto;
+  const scene = style.build(subject, themeName, space);
+
+  // trava de "sem texto" no INÍCIO e no FIM — IA de imagem distorce texto,
+  // então a imagem sai limpa e o título entra depois no 🎨 Estúdio ao lado.
+  return `${cap(NO_TEXT_LOCK)}. ${scene} IMPORTANTE, sem exceções: ${NO_TEXT_LOCK}, sem mãos ou dedos deformados, sem membros extras, sem rostos distorcidos ou duplicados, sem objetos derretidos.`;
 }
 
 $("#btnCrAiBuild").addEventListener("click", () => {
   $("#crAiPrompt").value = buildAiPrompt();
   const n = +($("#crAiCount")?.value || 1);
   toast(`Prompt profissional criado ✨${n > 1 ? ` — peça ${n} variações na IA` : ""}`);
+});
+$("#crRenderStyle")?.addEventListener("change", () => {
+  if ($("#crAiPrompt").value.trim()) { $("#crAiPrompt").value = buildAiPrompt(); toast("Estilo aplicado ao prompt 🎨"); }
 });
 
 $$(".ai-btn[data-ai]").forEach((btn) => {
@@ -1037,11 +1075,14 @@ $$(".ai-btn[data-ai]").forEach((btn) => {
 
 // ---------- Gerador de imagem EMBUTIDO (grátis, sem login) ----------
 // usa a API pública do Pollinations (Flux); a imagem aparece direto no site
+const AI_IMG_NEGATIVE = "text, letters, words, typography, writing, numbers, caption, subtitle, logo, watermark, signature, label, sticker text, blurry, low quality, deformed hands, extra fingers, extra limbs, disfigured, distorted face, duplicate, mutated";
+
 function pollUrl(prompt, seed, story) {
   const w = story ? 1080 : 1080;
   const h = story ? 1920 : 1080;
   // enhance=true: o Pollinations refina o prompt no servidor (menos distorção, mais realismo)
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&private=true&enhance=true&model=flux&seed=${seed}`;
+  // negative_prompt: reforço extra contra texto/letras renderizadas na imagem
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&private=true&enhance=true&model=flux&seed=${seed}&negative_prompt=${encodeURIComponent(AI_IMG_NEGATIVE)}`;
 }
 
 $("#btnCrAiGen")?.addEventListener("click", () => {
@@ -1221,103 +1262,76 @@ if (document.fonts?.ready) document.fonts.ready.then(renderCreative);
 renderCreative();
 
 // ============================================================
-// 12) GERADOR DE ÁUDIO — VOZ NEURAL HUMANA (Pollinations, grátis)
-// Nunca usa vozes do Google nem vozes robóticas. Fallback: só vozes
-// "(Natural)" do sistema (Edge/Windows); sem elas, orienta o usuário.
+// 12) GERADOR DE ÁUDIO — VOZ NEURAL HUMANA (motor de voz do sistema)
+// REGRA DURA: nunca toca voz do Google nem voz robótica. Só entram vozes
+// marcadas "(Natural)"/"Online"/"Neural" pelo próprio sistema operacional
+// (o Windows/Edge trazem essas de graça, sem instalar nada). Sem uma voz
+// assim disponível, a ferramenta avisa claramente em vez de usar robótica.
 // ============================================================
 const synth = window.speechSynthesis;
 let voices = [];
 
-// vozes neurais da API (openai-audio via Pollinations) — humanas de verdade
-const TTS_NEURAL_VOICES = {
-  female: [
-    ["nova", "Nova — feminina neural ⭐"],
-    ["shimmer", "Shimmer — feminina suave"],
-    ["coral", "Coral — feminina expressiva"],
-  ],
-  male: [
-    ["onyx", "Onyx — masculina neural ⭐"],
-    ["echo", "Echo — masculina firme"],
-    ["ash", "Ash — masculina jovem"],
-  ],
-};
-const TTS_TONE_HINT = { animada: " com tom animado e energético", normal: "", calma: " com tom calmo e acolhedor" };
+const TTS_GOOGLE_RE = /google/i;
+const TTS_NATURAL_RE = /natural|online|neural/i;
+const TTS_FEMALE_RE = /female|mulher|thalita|francisca|brenda|maria|giovanna|leila|leticia|manuela|heloisa|fernanda|joana|camila|yara|raquel|elza|luciana/i;
+const TTS_MALE_RE = /male|homem|antonio|donato|fabio|julio|ricardo|daniel|valerio|nicolau|humberto|duarte|cristiano|felipe|paulo|macerio/i;
+const TTS_TONES = { animada: { rate: 1.12, pitch: 1.1 }, normal: { rate: 1.0, pitch: 1.0 }, calma: { rate: 0.9, pitch: 0.94 } };
+
+function ttsGenderOf(v) {
+  if (TTS_FEMALE_RE.test(v.name)) return "female";
+  if (TTS_MALE_RE.test(v.name)) return "male";
+  return "unknown";
+}
+
+// só vozes 100% qualificadas: português + "(Natural)"/Online/Neural + NUNCA Google
+function ttsNaturalVoices() {
+  voices = synth ? synth.getVoices() : [];
+  return voices.filter((v) => v.lang.toLowerCase().startsWith("pt") && TTS_NATURAL_RE.test(v.name) && !TTS_GOOGLE_RE.test(v.name));
+}
 
 function renderTtsVoiceSelect() {
   const sel = $("#ttsVoice");
+  const warn = $("#ttsNoVoiceWarn");
   if (!sel) return;
   const gender = $("#ttsGender")?.value || "female";
-  sel.innerHTML = TTS_NEURAL_VOICES[gender].map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
+  const natural = ttsNaturalVoices();
+  let list = natural.filter((v) => ttsGenderOf(v) === gender);
+  if (!list.length) list = natural; // gênero não identificado no nome: mostra as naturais que existem
+  sel.innerHTML = list.length
+    ? list.map((v) => `<option value="${escHtml(v.name)}">${escHtml(v.name.replace(/microsoft/i, "").trim())} ${/pt.?br/i.test(v.lang) ? "🇧🇷" : "🇵🇹"}</option>`).join("")
+    : `<option value="">Nenhuma voz neural disponível</option>`;
+  if (list.length) sel.value = list[0].name;
+  const btn = $("#btnTtsPlay");
+  if (btn) btn.disabled = !list.length;
+  if (warn) warn.hidden = !!natural.length;
 }
-renderTtsVoiceSelect();
+
+function loadVoices() {
+  renderTtsVoiceSelect();
+}
+if (synth) {
+  loadVoices();
+  synth.onvoiceschanged = loadVoices;
+}
 $("#ttsGender")?.addEventListener("change", renderTtsVoiceSelect);
 
-// fallback local: SÓ vozes "(Natural)" — nunca Google, nunca robótica
-function bestNaturalLocalVoice() {
-  voices = synth ? synth.getVoices() : [];
-  const pt = voices.filter((v) => v.lang.toLowerCase().startsWith("pt") && !/google/i.test(v.name) && /natural/i.test(v.name));
-  const gender = $("#ttsGender")?.value || "female";
-  const FEM = /female|thalita|francisca|brenda|giovanna|leila|leticia|manuela|yara|elza|luciana/i;
-  return pt.find((v) => (gender === "female" ? FEM.test(v.name) : !FEM.test(v.name))) || pt[0] || null;
-}
-
-let ttsAudio = null;
-let ttsBlobUrl = null;
-
-$("#btnTtsPlay").addEventListener("click", async () => {
-  let text = $("#ttsInput").value.trim();
+$("#btnTtsPlay").addEventListener("click", () => {
+  if (!synth) return toast("Seu navegador não suporta síntese de voz 😕");
+  const text = $("#ttsInput").value.trim();
   if (!text) return toast("Escreva um texto primeiro ✍️");
-  if (text.length > 1200) { text = text.slice(0, 1200); toast("Texto longo: narrando os primeiros 1.200 caracteres 🎙️"); }
-  const voice = $("#ttsVoice").value || "nova";
-  const tone = TTS_TONE_HINT[$("#ttsTone")?.value] ?? "";
-  const btn = $("#btnTtsPlay");
-  const label = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = "⏳ Gerando voz neural…";
-  if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
-  synth?.cancel();
-  try {
-    const payload = `Leia em voz alta, em português do Brasil${tone}, exatamente o texto a seguir, sem adicionar nem comentar nada:\n\n${text}`;
-    const url = `https://text.pollinations.ai/${encodeURIComponent(payload)}?model=openai-audio&voice=${voice}`;
-    const r = await fetch(url);
-    if (!r.ok || !/audio/i.test(r.headers.get("content-type") || "")) throw new Error("HTTP " + r.status);
-    const blob = await r.blob();
-    if (ttsBlobUrl) URL.revokeObjectURL(ttsBlobUrl);
-    ttsBlobUrl = URL.createObjectURL(blob);
-    ttsAudio = new Audio(ttsBlobUrl);
-    ttsAudio.play();
-    const dl = $("#btnTtsDl");
-    if (dl) dl.hidden = false;
-    toast(`Voz neural reproduzindo 🔊 (${$("#ttsGender")?.value === "male" ? "masculina" : "feminina"})`);
-  } catch (err) {
-    // sem internet/API: usa APENAS voz Natural do sistema (nunca Google)
-    const v = bestNaturalLocalVoice();
-    if (synth && v) {
-      const u = new SpeechSynthesisUtterance(text);
-      u.voice = v;
-      synth.speak(u);
-      toast("Sem conexão com a voz neural — usando a voz Natural do seu sistema 🔊");
-    } else {
-      toast("Não consegui gerar a voz neural agora 😕 Verifique a internet e tente de novo.");
-    }
-  }
-  btn.disabled = false;
-  btn.textContent = label;
+  const name = $("#ttsVoice").value;
+  const v = voices.find((v) => v.name === name);
+  if (!v) return toast("Nenhuma voz neural disponível — veja o aviso abaixo 👇");
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.voice = v;
+  const tone = TTS_TONES[$("#ttsTone")?.value] || TTS_TONES.normal;
+  u.rate = tone.rate;
+  u.pitch = tone.pitch;
+  synth.speak(u);
+  toast(`Reproduzindo 🔊 (${$("#ttsGender")?.value === "male" ? "masculina" : "feminina"}, voz neural)`);
 });
-
-$("#btnTtsStop").addEventListener("click", () => {
-  if (ttsAudio) ttsAudio.pause();
-  synth?.cancel();
-});
-
-$("#btnTtsDl")?.addEventListener("click", () => {
-  if (!ttsBlobUrl) return toast("Gere a narração primeiro ▶");
-  const a = document.createElement("a");
-  a.href = ttsBlobUrl;
-  a.download = "pulsarads-narracao-" + Date.now() + ".mp3";
-  a.click();
-  toast("Narração baixada 🎧");
-});
+$("#btnTtsStop").addEventListener("click", () => synth?.cancel());
 
 // ============================================================
 // 13) TRANSCRITOR POR VOZ (Web Speech — STT)

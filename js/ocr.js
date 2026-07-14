@@ -96,12 +96,22 @@ async function getOcrWorker(status) {
   return ocrWorker;
 }
 
-// pré-processamento que faz o OCR "enxergar" qualquer print:
-// amplia a imagem, converte pra tons de cinza e estica o contraste
-async function ocrPreprocess(file) {
+// PSM 6 = bloco uniforme (melhor pra parágrafos/copy); PSM 11 = texto esparso
+// (melhor pra legendas/selos pequenos espalhados sobre foto de fundo)
+async function ocrRecognizePass(worker, canvas, psm) {
+  await worker.setParameters({ tessedit_pageseg_mode: psm });
+  return worker.recognize(canvas);
+}
+
+// pré-processamento em 2 variantes pra pegar até texto MINÚSCULO:
+// 1) ampliação agressiva + tons de cinza + contraste esticado + nitidez (unsharp mask)
+// 2) a mesma base, mas binarizada (preto/branco puro via limiar de Otsu) —
+//    essencial pra legendas/selos pequenos sobre fundo de foto "sujo"
+async function ocrPreprocessVariants(file) {
   const img = await createImageBitmap(file);
-  let scale = Math.min(3, Math.max(1, 1600 / Math.min(img.width, img.height)));
-  if (img.width * scale > 4200) scale = 4200 / img.width;
+  // amplia bem mais que antes: texto pequeno precisa de MUITOS pixels por letra
+  let scale = Math.min(6, Math.max(1, 2600 / Math.min(img.width, img.height)));
+  if (img.width * scale > 6000) scale = 6000 / img.width;
   const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
   const cv = document.createElement("canvas");
   cv.width = w; cv.height = h;
@@ -111,27 +121,66 @@ async function ocrPreprocess(file) {
   cx.drawImage(img, 0, 0, w, h);
   const id = cx.getImageData(0, 0, w, h);
   const d = id.data;
+  const n = d.length / 4;
+  const gray = new Float32Array(n);
   const hist = new Uint32Array(256);
-  for (let i = 0; i < d.length; i += 4) {
-    const y = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
-    d[i] = y;
-    hist[y]++;
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+    const y = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+    gray[p] = y;
+    hist[y | 0]++;
   }
-  // estica o contraste entre os percentis 2% e 98%
-  const total = d.length / 4;
+  // estica o contraste entre os percentis 1.5% e 98.5%
+  const total = n;
   let lo = 0, hi = 255, acc = 0;
-  for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= total * 0.02) { lo = i; break; } }
+  for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= total * 0.015) { lo = i; break; } }
   acc = 0;
-  for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc >= total * 0.02) { hi = i; break; } }
+  for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc >= total * 0.015) { hi = i; break; } }
   const rng = Math.max(1, hi - lo);
-  for (let i = 0; i < d.length; i += 4) {
-    let y = ((d[i] - lo) * 255) / rng;
-    y = y < 0 ? 0 : y > 255 ? 255 : y;
-    d[i] = d[i + 1] = d[i + 2] = y;
+  for (let p = 0; p < n; p++) {
+    let y = ((gray[p] - lo) * 255) / rng;
+    gray[p] = y < 0 ? 0 : y > 255 ? 255 : y;
   }
-  cx.putImageData(id, 0, 0);
-  return cv;
+  // nitidez (unsharp mask): realça bordas das letras, crucial em texto pequeno
+  const sharp = new Float32Array(n);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const p = y * w + x;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) { sharp[p] = gray[p]; continue; }
+      const c = gray[p], up = gray[p - w], down = gray[p + w], left = gray[p - 1], right = gray[p + 1];
+      const v = c * 5 - up - down - left - right;
+      sharp[p] = v < 0 ? 0 : v > 255 ? 255 : v;
+    }
+  }
+  // variante A: tons de cinza nítidos (melhor pra parágrafos/copy normal)
+  const idA = cx.createImageData(w, h);
+  for (let p = 0, i = 0; p < n; p++, i += 4) { idA.data[i] = idA.data[i + 1] = idA.data[i + 2] = sharp[p]; idA.data[i + 3] = 255; }
+  const cvA = document.createElement("canvas"); cvA.width = w; cvA.height = h;
+  cvA.getContext("2d").putImageData(idA, 0, 0);
+
+  // limiar de Otsu → variante binarizada (preto/branco puro)
+  let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
+  let sumB = 0, wB = 0, wF = 0, varMax = 0, threshold = 128;
+  for (let t = 0; t < 256; t++) {
+    wB += hist[t]; if (wB === 0) continue;
+    wF = total - wB; if (wF === 0) break;
+    sumB += t * hist[t];
+    const mB = sumB / wB, mF = (sum - sumB) / wF;
+    const between = wB * wF * (mB - mF) * (mB - mF);
+    if (between > varMax) { varMax = between; threshold = t; }
+  }
+  const idB = cx.createImageData(w, h);
+  for (let p = 0, i = 0; p < n; p++, i += 4) {
+    const v = sharp[p] > threshold ? 255 : 0;
+    idB.data[i] = idB.data[i + 1] = idB.data[i + 2] = v; idB.data[i + 3] = 255;
+  }
+  const cvB = document.createElement("canvas"); cvB.width = w; cvB.height = h;
+  cvB.getContext("2d").putImageData(idB, 0, 0);
+
+  return { gray: cvA, bin: cvB };
 }
+
+// normaliza pra comparar/deduplicar texto entre as duas passadas
+const ocrNorm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "");
 
 $("#btnOcrRun").addEventListener("click", async () => {
   if (!ocrFile) return;
@@ -143,20 +192,36 @@ $("#btnOcrRun").addEventListener("click", async () => {
     status.textContent = "Carregando o motor de OCR (só na 1ª vez)…";
     await loadTesseract();
     const worker = await getOcrWorker(status);
-    status.textContent = "Preparando a imagem (ampliação + contraste)…";
-    const prepped = await ocrPreprocess(ocrFile);
-    status.textContent = "Lendo a imagem…";
-    const { data } = await worker.recognize(prepped);
-    // monta PARÁGRAFOS (não linhas soltas) — melhor pra copiar copies inteiras
-    let parts = (data.paragraphs || [])
+    status.textContent = "Preparando a imagem (ampliação 6x + nitidez + contraste)…";
+    const { gray, bin } = await ocrPreprocessVariants(ocrFile);
+
+    status.textContent = "Lendo parágrafos e copy…";
+    const passA = await ocrRecognizePass(worker, gray, "6");
+    let parts = (passA.data.paragraphs || [])
       .map((p) => (p.text || "").replace(/\s*\n\s*/g, " ").replace(/\s{2,}/g, " ").trim())
       .filter((t) => t.length > 2);
-    if (!parts.length && data.text) {
-      parts = data.text.split(/\n{2,}/)
+    if (!parts.length && passA.data.text) {
+      parts = passA.data.text.split(/\n{2,}/)
         .map((t) => t.replace(/\s*\n\s*/g, " ").replace(/\s{2,}/g, " ").trim())
         .filter((t) => t.length > 2);
     }
-    if (!parts.length && data.text) parts = data.text.split(/\r?\n/).map((t) => t.trim()).filter((t) => t.length > 1);
+
+    status.textContent = "Caçando texto minúsculo (selos, legendas, marcas d'água)…";
+    const passB = await ocrRecognizePass(worker, bin, "11");
+    const seen = new Set(parts.map(ocrNorm));
+    const extra = (passB.data.lines || [])
+      .filter((l) => (l.confidence || 0) >= 35 && (l.text || "").trim().length > 1)
+      .map((l) => l.text.trim().replace(/\s{2,}/g, " "))
+      .filter((t) => {
+        const k = ocrNorm(t);
+        if (!k || seen.has(k)) return false;
+        // ignora se já está CONTIDO em algum parágrafo grande da passada A
+        if (parts.some((p) => ocrNorm(p).includes(k))) return false;
+        seen.add(k);
+        return true;
+      });
+    parts = [...parts, ...extra];
+
     if (!parts.length) {
       status.textContent = "Não encontrei texto legível nessa imagem 😕 Tente um print mais nítido e reto.";
       btn.disabled = false;
@@ -164,14 +229,14 @@ $("#btnOcrRun").addEventListener("click", async () => {
     }
     $("#ocrLines").innerHTML = parts
       .map(
-        (t) => `<label class="ocr-line">
+        (t, i) => `<label class="ocr-line">
           <input type="checkbox" data-ocr-line checked />
-          <span>${escHtml(t)}</span>
+          <span>${escHtml(t)}${i >= parts.length - extra.length ? ' <small class="hint">· texto pequeno</small>' : ""}</span>
         </label>`
       )
       .join("");
     $("#ocrResultCard").hidden = false;
-    status.textContent = `${parts.length} parágrafo${parts.length > 1 ? "s" : ""}/trecho${parts.length > 1 ? "s" : ""} encontrado${parts.length > 1 ? "s" : ""} — desmarque o que não quiser. (imagem já removida do visualizador)`;
+    status.textContent = `${parts.length} trecho${parts.length > 1 ? "s" : ""} encontrado${parts.length > 1 ? "s" : ""}${extra.length ? ` (${extra.length} em texto pequeno)` : ""} — desmarque o que não quiser. (imagem já removida do visualizador)`;
     window.spendUse();
     // remove a imagem do visualizador automaticamente, mantendo o resultado
     clearOcrImage(true);

@@ -127,14 +127,6 @@ mark.bw-mark { background: rgba(230, 103, 103, 0.3); color: var(--text); border-
 /* ---------- UTM ---------- */
 .utm-result { margin-top: 18px; margin-bottom: 14px; background: rgba(0, 0, 0, 0.35); border: 1px dashed var(--border-strong); border-radius: 10px; padding: 14px 16px; font-family: Consolas, monospace; font-size: 13px; color: var(--cyan); word-break: break-all; min-height: 48px; }
 
-/* ---------- Radar ---------- */
-.radar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 18px; }
-.radar-card { text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; cursor: pointer; color: var(--text); font-family: var(--font-body); display: flex; flex-direction: column; gap: 6px; transition: transform 0.2s, border-color 0.2s, background 0.2s; }
-.radar-card:hover { transform: translateY(-3px); border-color: rgba(56, 189, 248, 0.5); background: var(--card-hover); }
-.radar-card strong { font-size: 15px; }
-.radar-card span { font-size: 13px; color: var(--text-2); }
-.radar-card .tc-go { color: var(--cyan); font-weight: 600; margin-top: 6px; font-size: 13px; }
-
 /* ---------- Criativo ---------- */
 .creative-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
 .creative-preview { display: grid; place-items: center; padding: 28px; }

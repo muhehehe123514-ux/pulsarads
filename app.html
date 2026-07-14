@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260713d" />
-  <link rel="stylesheet" href="css/app.css?v=20260713d" />
+  <link rel="stylesheet" href="css/style.css?v=20260713e" />
+  <link rel="stylesheet" href="css/app.css?v=20260713e" />
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 </head>
 <body class="app-body auth-locked">
@@ -103,6 +103,7 @@
         <a href="#biblioteca" class="side-link" data-tool="biblioteca"><span class="si">📚</span> Biblioteca de Ofertas</a>
         <a href="#modelar" class="side-link" data-tool="modelar"><span class="si">✨</span> Modelar Oferta <span class="side-new">novo</span></a>
         <a href="#lowticket" class="side-link" data-tool="lowticket"><span class="si">🧭</span> Modelador Low Ticket</a>
+        <a href="#tutorial-espelho" class="side-link" data-tool="tutorial-espelho"><span class="si">🪞</span> Tutorial do Espelho</a>
         <div class="side-group">Copy &amp; texto</div>
         <a href="#headlines" class="side-link" data-tool="headlines"><span class="si">✍️</span> Gerador de Headlines</a>
         <a href="#copy" class="side-link" data-tool="copy"><span class="si">🔁</span> Reescritor de Copy</a>
@@ -114,7 +115,6 @@
         <a href="#utm" class="side-link" data-tool="utm"><span class="si">🔗</span> Gerador de UTMs</a>
         <a href="#macros" class="side-link" data-tool="macros"><span class="si">🎯</span> UTMs Dinâmicas <span class="side-new">novo</span></a>
         <a href="#escala" class="side-link" data-tool="escala"><span class="si">📈</span> Simulador de Escala</a>
-        <a href="#radar" class="side-link" data-tool="radar"><span class="si">🛰️</span> Radar de Concorrentes</a>
         <div class="side-group">Estúdio</div>
         <a href="#criativo" class="side-link" data-tool="criativo"><span class="si">🎨</span> Estúdio de Criativos</a>
         <a href="#audio" class="side-link" data-tool="audio"><span class="si">🔊</span> Gerador de Áudio</a>
@@ -124,7 +124,7 @@
       </nav>
       <div class="token-meter" id="tokenMeter" hidden></div>
       <div class="side-foot">
-        <a href="https://github.com/muhehehe123514-ux/pulsarads" target="_blank" rel="noopener">⭐ Código no GitHub</a>
+        <span class="hint">PulsarAds — dados salvos só neste navegador</span>
       </div>
     </aside>
 
@@ -298,44 +298,32 @@
         </div>
       </section>
 
-      <!-- ===== RADAR ===== -->
-      <section class="panel" id="tool-radar">
+      <!-- ===== TUTORIAL DO ESPELHO ===== -->
+      <section class="panel" id="tool-tutorial-espelho">
         <div class="panel-head">
-          <h2>🛰️ Radar de Concorrentes</h2>
-          <p>Pesquise anúncios ativos nas bibliotecas públicas e oficiais de transparência — a forma legítima de estudar o mercado.</p>
+          <h2>🪞 Tutorial: extensão de espelhamento</h2>
+          <p>Instale a extensão <strong>PulsarAds Espelho</strong> (1x, grátis) e o 🔥 Explorador de Ofertas passa a trazer os anúncios reais sozinho — imagens, vídeo, ticket e tudo mais.</p>
         </div>
         <div class="card">
-          <div class="form-grid">
-            <label>Palavra-chave ou anunciante <input type="text" id="spyQuery" placeholder="Ex.: emagrecimento, curso de inglês, nome da marca…" /></label>
-            <label>País
-              <select id="spyCountry">
-                <option value="BR" selected>Brasil</option>
-                <option value="US">Estados Unidos</option>
-                <option value="PT">Portugal</option>
-                <option value="MX">México</option>
-                <option value="AR">Argentina</option>
-                <option value="ALL">Todos</option>
-              </select>
-            </label>
+          <div class="card-head-row">
+            <h3>1 · Baixe a extensão</h3>
+            <a class="btn btn-primary btn-sm" href="pulsarads-espelho.zip" download>⬇ Baixar PulsarAds Espelho (.zip)</a>
           </div>
-          <div class="radar-grid">
-            <button class="radar-card" data-lib="meta">
-              <strong>Meta Ad Library</strong>
-              <span>Anúncios ativos no Facebook e Instagram</span>
-              <span class="tc-go">Pesquisar →</span>
-            </button>
-            <button class="radar-card" data-lib="google">
-              <strong>Google Ads Transparency</strong>
-              <span>Anúncios veiculados no Google e YouTube</span>
-              <span class="tc-go">Pesquisar →</span>
-            </button>
-            <button class="radar-card" data-lib="tiktok">
-              <strong>TikTok Ad Library</strong>
-              <span>Anúncios em circulação no TikTok</span>
-              <span class="tc-go">Pesquisar →</span>
-            </button>
-          </div>
-          <p class="hint">Os links abrem a busca já montada na biblioteca oficial de cada plataforma, em nova aba.</p>
+          <p class="hint">Arquivo leve (~10 KB), sem instalador, sem conta — só os arquivos da extensão.</p>
+        </div>
+        <div class="card">
+          <h3>2 · Instale no Chrome ou Edge</h3>
+          <ol class="steps-list">
+            <li><strong>Extraia</strong> o ZIP baixado (botão direito → Extrair tudo).</li>
+            <li>Abra <code>chrome://extensions</code> (ou <code>edge://extensions</code> no Edge).</li>
+            <li>Ligue o <strong>Modo do desenvolvedor</strong> (canto superior direito).</li>
+            <li>Clique em <strong>Carregar sem compactação</strong> e escolha a pasta <code>extension</code> que você extraiu.</li>
+            <li>Pronto! Abra o 🔥 <a class="link-inline" href="#ofertas">Explorador de Ofertas</a> e pesquise — quando aparecer <strong>"⚡ Skill de espelhamento ativa"</strong> no topo, os anúncios reais vêm sozinhos.</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>Como funciona (honesto)</h3>
+          <p class="hint" style="font-size:13.5px">A Biblioteca de Anúncios do Facebook é <strong>pública</strong> — qualquer pessoa vê os anúncios ativos. A extensão só lê o que já está visível ali, no <strong>seu</strong> navegador, e traz pro PulsarAds. Não faz login, não mexe na sua conta, não posta nada. Sem ela, o site continua funcionando com o botão <strong>🪞 Espelhar anúncio</strong> (bookmarklet) na 📚 Biblioteca de Ofertas — a extensão só automatiza esse passo.</p>
         </div>
       </section>
 
@@ -435,6 +423,9 @@
           </div>
           <p class="hint" style="margin-bottom:14px">Descreva em palavras simples o que você quer — o <strong>criador de prompts profissionais</strong> transforma isso num prompt de nível de estúdio. Depois escolha a IA de imagem.</p>
           <div class="form-grid">
+            <label>🎨 Estilo de renderização
+              <select id="crRenderStyle"></select>
+            </label>
             <label>Base (oferta modelada, opcional)
               <select id="crAiOffer"><option value="">— prompt livre —</option></select>
             </label>
@@ -459,7 +450,10 @@
           <div class="form-actions">
             <button type="button" class="btn btn-primary" id="btnCrAiGen">🎨 Gerar criativo grátis (aparece aqui)</button>
           </div>
-          <p class="hint">Gera direto no site, sem login e sem sair — em segundos o criativo aparece embaixo. É grátis e ilimitado (conta como 1 uso por geração). <strong>As imagens saem limpas, sem texto</strong> — é isso que elimina letras distorcidas; o título e o botão você coloca depois com "Usar no criativo" (o Estúdio acima escreve o texto perfeito por cima).</p>
+          <p class="hint">Gera direto no site, sem login e sem sair — em segundos o criativo aparece embaixo. É grátis e ilimitado (conta como 1 uso por geração).</p>
+          <div class="ext-status on" style="margin:10px 0 0">
+            ⚠️ <strong>As imagens saem SEMPRE sem nenhum texto</strong> — é essa a trava que elimina letras/números distorcidos, que é o maior defeito de IAs de imagem grátis. Escreva o título e o botão depois no <strong>🎨 Estúdio de Criativos</strong> acima (clique em "Usar no criativo") — o texto sai perfeito, sem erro de digitação e sem deformação.
+          </div>
           <div class="ai-results" id="crAiResults"></div>
 
           <details class="ai-external">
@@ -493,7 +487,7 @@
       <section class="panel" id="tool-ocr">
         <div class="panel-head">
           <h2>🖼️ Imagem → Texto</h2>
-          <p>Extraia o texto de prints e criativos (OCR em português, direto no navegador). Depois selecione só os trechos que interessam — um ou vários — e copie.</p>
+          <p>Extraia o texto de prints e criativos (OCR em português + inglês, direto no navegador). Roda em <strong>2 passadas</strong> — uma pra parágrafos/copy, outra caçando texto minúsculo (selos, legendas) — pra pegar até letra pequena com precisão. Depois selecione só os trechos que interessam e copie.</p>
         </div>
         <div class="card">
           <label class="dropzone" id="ocrDrop">
@@ -632,11 +626,14 @@
             <label>Voz neural <select id="ttsVoice"></select></label>
           </div>
           <div class="form-actions">
-            <button class="btn btn-primary btn-sm" id="btnTtsPlay">▶ Gerar e reproduzir</button>
+            <button class="btn btn-primary btn-sm" id="btnTtsPlay">▶ Reproduzir</button>
             <button class="btn btn-ghost btn-sm" id="btnTtsStop">⏹ Parar</button>
-            <button class="btn btn-ghost btn-sm" id="btnTtsDl" hidden>⬇ Baixar MP3</button>
           </div>
-          <p class="hint" id="ttsHint">Vozes 100% neurais e humanas — sem voz de robô e sem vozes do Google. A narração é gerada na hora, grátis, e você pode <strong>baixar o MP3</strong> pra usar nos seus vídeos e criativos.</p>
+          <p class="hint" id="ttsHint">Só mostramos vozes <strong>100% neurais e humanas</strong> — nunca voz de robô, nunca voz do Google. Pra gravar, use o gravador de tela/áudio do seu sistema enquanto reproduz.</p>
+          <div class="bw-flag risk-med" id="ttsNoVoiceWarn" hidden style="margin-top:12px">
+            <span class="bw-term">⚠️ Nenhuma voz neural encontrada</span>
+            <p>Seu navegador não tem nenhuma voz "(Natural)"/"Online" em português instalada. No <strong>Windows</strong>, abra esta página no <strong>Microsoft Edge</strong> (já vem instalado, é grátis) — ele libera vozes neurais em português automaticamente. Não usamos vozes robóticas nem do Google como substituto.</p>
+          </div>
         </div>
       </section>
 
@@ -1102,18 +1099,18 @@
   <div class="toast" id="toast"></div>
   <div class="viz-tooltip" id="vizTooltip" hidden></div>
 
-  <script src="js/config.js?v=20260713d"></script>
-  <script src="js/extbridge.js?v=20260713d"></script>
-  <script src="js/app.js?v=20260713d"></script>
-  <script src="js/images.js?v=20260713d"></script>
-  <script src="js/tools2.js?v=20260713d"></script>
-  <script src="js/meta.js?v=20260713d"></script>
-  <script src="js/library.js?v=20260713d"></script>
-  <script src="js/ocr.js?v=20260713d"></script>
-  <script src="js/modelar.js?v=20260713d"></script>
-  <script src="js/auth.js?v=20260713d"></script>
-  <script src="js/tokens.js?v=20260713d"></script>
-  <script src="js/payments.js?v=20260713d"></script>
-  <script src="js/mirror.js?v=20260713d"></script>
+  <script src="js/config.js?v=20260713e"></script>
+  <script src="js/extbridge.js?v=20260713e"></script>
+  <script src="js/app.js?v=20260713e"></script>
+  <script src="js/images.js?v=20260713e"></script>
+  <script src="js/tools2.js?v=20260713e"></script>
+  <script src="js/meta.js?v=20260713e"></script>
+  <script src="js/library.js?v=20260713e"></script>
+  <script src="js/ocr.js?v=20260713e"></script>
+  <script src="js/modelar.js?v=20260713e"></script>
+  <script src="js/auth.js?v=20260713e"></script>
+  <script src="js/tokens.js?v=20260713e"></script>
+  <script src="js/payments.js?v=20260713e"></script>
+  <script src="js/mirror.js?v=20260713e"></script>
 </body>
 </html>

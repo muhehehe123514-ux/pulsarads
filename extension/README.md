@@ -7,8 +7,7 @@ Funciona no **Chrome** e no **Edge** (é Manifest V3, o padrão dos dois).
 ## Instalar no CHROME (1 minuto, uma vez só)
 1. Abra **chrome://extensions**
 2. Ligue o **Modo do desenvolvedor** (canto superior direito).
-3. Clique em **Carregar sem compactação** (Load unpacked) e escolha esta pasta:
-   `C:\Users\LVLSTI\Downloads\pulsarads\extension`
+3. Clique em **Carregar sem compactação** (Load unpacked) e escolha a pasta `extension` que você acabou de extrair do ZIP baixado no PulsarAds.
 4. Pronto. Abra o PulsarAds → 🔥 Explorador de Ofertas → pesquise. No topo aparece **"⚡ Skill de espelhamento ativa"** e os anúncios reais vêm sozinhos, com imagens.
 
 ## Instalar no EDGE

@@ -187,7 +187,7 @@ function renderExtStatus() {
     el.innerHTML = `⚡ <strong>Skill de espelhamento ativa</strong> — é só pesquisar que os anúncios reais (com imagens, ticket e dados) aparecem sozinhos.\n`;
   } else {
     el.className = "ext-status off";
-    el.innerHTML = `💡 <strong>Quer no automático?</strong> Instale a extensão <strong>PulsarAds Espelho</strong> (1x) e a pesquisa traz os anúncios reais. <a href="https://github.com/muhehehe123514-ux/pulsarads/tree/main/extension" target="_blank" rel="noopener" class="link-inline">Como instalar ↗</a>\n`;
+    el.innerHTML = `💡 <strong>Quer no automático?</strong> Instale a extensão <strong>PulsarAds Espelho</strong> (1x) e a pesquisa traz os anúncios reais. <a href="#tutorial-espelho" class="link-inline">Como instalar ↗</a>\n`;
   }
 }
 document.addEventListener("pulsar-ext-ready", renderExtStatus);
