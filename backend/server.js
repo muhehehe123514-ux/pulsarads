@@ -495,4 +495,44 @@ app.get("/api/tts", async (req, res) => {
   }
 });
 
+/* ============================================================
+   🌐 HOSPEDAGEM DE PÁGINAS DE VENDAS — substitui o Netlify.
+   O site manda o HTML pronto, guardamos no banco (Upstash) e
+   servimos em /p/:id na hora. Grátis, sem token, sem limite de
+   "deploys" (não existe build — é só salvar e servir).
+   ============================================================ */
+app.post("/api/publish-page", express.json({ limit: "2mb" }), async (req, res) => {
+  try {
+    const html = String(req.body?.html || "");
+    if (html.length < 200) return res.status(400).json({ error: "página vazia" });
+    if (!/<!doctype html/i.test(html.slice(0, 200))) return res.status(400).json({ error: "HTML inválido" });
+    if (html.length > 900_000) return res.status(413).json({ error: "página pesada demais (~900KB máx) — reduza as fotos" });
+    const slugBase = String(req.body?.slug || "pagina").toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "pagina";
+    const id = `${slugBase}-${crypto.randomBytes(4).toString("hex")}`;
+    if (hasDB) await up(["SET", `pulsar:page:${id}`, html]);
+    else { const d = loadFile(); d[`__page_${id}`] = html; saveFile(d); }
+    const base = PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
+    res.json({ ok: true, id, url: `${base}/p/${id}` });
+  } catch (e) {
+    console.error("publish-page", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/p/:id", async (req, res) => {
+  try {
+    const id = String(req.params.id).replace(/[^a-z0-9-]/gi, "").slice(0, 60);
+    let html = null;
+    if (hasDB) html = await up(["GET", `pulsar:page:${id}`]);
+    else html = loadFile()[`__page_${id}`] || null;
+    if (!html) return res.status(404).send("<h1 style='font-family:sans-serif;text-align:center;margin-top:80px'>Página não encontrada 😕</h1>");
+    res.set({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300" });
+    res.send(html);
+  } catch (e) {
+    res.status(500).send("erro ao carregar a página");
+  }
+});
+
 app.listen(PORT, () => console.log(`PulsarAds backend v3 on :${PORT} (MP ${client ? "ON" : "OFF"}, DB ${hasDB ? "Upstash" : "arquivo"})`));

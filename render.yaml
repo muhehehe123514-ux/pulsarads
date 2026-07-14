@@ -16,3 +16,11 @@ services:
       - key: FRONTEND_ORIGIN
         value: https://muhehehe123514-ux.github.io
       # PUBLIC_URL é resolvida sozinha via RENDER_EXTERNAL_URL — não precisa definir
+
+  # Site espelho ESTÁTICO (substituto do domínio netlify.app, que ficou sem
+  # créditos) — deploy automático a cada push, grátis e sem limite de builds.
+  - type: web
+    name: pulsarads-site
+    runtime: static
+    staticPublishPath: .
+    autoDeploy: true

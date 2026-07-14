@@ -839,21 +839,50 @@ $("#btnMdPublish").addEventListener("click", async () => {
   const html = mdSerialize();
   if (!html) return toast("Gere a página primeiro 🚀");
   if (!mdChargeOnce()) return;
+  const btn = $("#btnMdPublish");
+  btn.disabled = true;
+  btn.textContent = "🌐 Publicando…";
+
+  // CAMINHO PRINCIPAL: publica no servidor do PulsarAds — sem token, sem
+  // limite de deploy, link na hora (o Netlify virou só reserva/manual)
+  try {
+    const base = window.PULSAR_BACKEND || "";
+    if (!base) throw new Error("backend não configurado");
+    const r = await fetch(base + "/api/publish-page", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ html, slug: slug(md.offer?.name || "pagina") }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.url) throw new Error(j.error || "HTTP " + r.status);
+    $("#mdPublishOut").innerHTML = `<div class="bw-ok">🌐 <strong>Página no ar AGORA!</strong>
+      <a class="link-inline" href="${escHtml(j.url)}" target="_blank" rel="noopener">${escHtml(j.url)} ↗</a>
+      <button class="btn-copy" data-copy="${escHtml(j.url)}" style="margin-left:10px">⧉ Copiar link</button>
+      <br><span class="hint">Hospedada no servidor do PulsarAds — grátis, sem limite. Publicar de novo gera um link novo.</span></div>`;
+    toast("Página publicada 🌐 link na hora!");
+    window.open(j.url, "_blank", "noopener");
+    btn.disabled = false;
+    btn.textContent = "🌐 Publicar grátis";
+    return;
+  } catch (errPrim) {
+    toast("Servidor indisponível pra publicar (" + (errPrim.message || "") + ") — tentando o caminho reserva…");
+  }
+
+  // RESERVA: fluxo antigo via token do Netlify
   let token = localStorage.getItem(NTL_KEY);
   if (!token) {
     token = prompt(
-      "Pra ganhar o domínio grátis automático, cole seu token do Netlify (1x só):\n\n1. Crie conta grátis em netlify.com\n2. User settings → Applications → New access token\n3. Cole aqui:"
+      "Caminho reserva (Netlify) — cole seu token (1x só):\n\n1. Crie conta grátis em netlify.com\n2. User settings → Applications → New access token\n3. Cole aqui:"
     );
     if (!token) {
-      $("#mdPublishOut").innerHTML = `<div class="om-desc">Sem token, use o caminho manual (também grátis): <strong>1)</strong> Baixar HTML · <strong>2)</strong> renomear pra <code>index.html</code> · <strong>3)</strong> arrastar em <a class="link-inline" href="https://app.netlify.com/drop" target="_blank" rel="noopener">app.netlify.com/drop ↗</a> — o domínio sai na hora.</div>`;
+      $("#mdPublishOut").innerHTML = `<div class="om-desc">Use o caminho manual (também grátis): <strong>1)</strong> Baixar HTML · <strong>2)</strong> renomear pra <code>index.html</code> · <strong>3)</strong> arrastar em <a class="link-inline" href="https://app.netlify.com/drop" target="_blank" rel="noopener">app.netlify.com/drop ↗</a> — o domínio sai na hora.</div>`;
+      btn.disabled = false;
+      btn.textContent = "🌐 Publicar grátis";
       return;
     }
     localStorage.setItem(NTL_KEY, token.trim());
     token = token.trim();
   }
-  const btn = $("#btnMdPublish");
-  btn.disabled = true;
-  btn.textContent = "🌐 Publicando…";
   try {
     await loadJSZip();
     const siteName = slug(md.offer.name) + "-" + Math.floor(Math.random() * 900 + 100);
@@ -898,5 +927,5 @@ $("#btnMdPublish").addEventListener("click", async () => {
     </div>`;
   }
   btn.disabled = false;
-  btn.textContent = "🌐 Publicar no Netlify";
+  btn.textContent = "🌐 Publicar grátis";
 });

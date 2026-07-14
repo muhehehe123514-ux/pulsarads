@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PulsarAds Espelho",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Espelha anúncios reais da Biblioteca de Anúncios do Facebook (pública) direto no PulsarAds — pesquisou, apareceu com imagens, ticket real e VSL.",
   "permissions": ["tabs"],
   "host_permissions": [
@@ -21,7 +21,8 @@
     {
       "matches": [
         "*://muhehehe123514-ux.github.io/pulsarads/*",
-        "*://pulsarads.netlify.app/*"
+        "*://pulsarads.netlify.app/*",
+        "*://pulsarads-site.onrender.com/*"
       ],
       "js": ["content-bridge.js"],
       "run_at": "document_start"
