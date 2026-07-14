@@ -556,6 +556,8 @@ kbd { font-family: Consolas, monospace; font-size: 11px; background: rgba(255, 2
 .fbl-alinks a, .fbl-alinks button { display: block; width: 100%; text-align: left; border: none; cursor: pointer; font-family: inherit; background: #f0f2f5; border-radius: 8px; padding: 9px 12px; font-size: 13px; font-weight: 600; color: #1c2b33; text-decoration: none; transition: background 0.15s; }
 .fbl-alinks a:hover, .fbl-alinks button:hover { background: #e4e6eb; }
 .fbl-alinks button { background: linear-gradient(135deg, #e7f0ff, #f0e9ff); }
+.fbl-alinks a.hl { background: linear-gradient(135deg, #1877f2, #7c3aed); color: #fff; text-align: center; }
+.fbl-alinks a.hl:hover { opacity: 0.92; background: linear-gradient(135deg, #1877f2, #7c3aed); }
 a.fbl-ctabtn { text-decoration: none; transition: background 0.15s; }
 a.fbl-ctabtn:hover { background: #d8dadf; }
 

@@ -228,17 +228,27 @@ function fblPlatIcons(o) {
   return `<span class="fbl-picons">${list.map((p) => PLAT_SVG[p] || "").join("")}</span>`;
 }
 
+// um item só é "anúncio real" quando foi espelhado (tem dados do FB)
+function fblIsMirror(o) {
+  return !!(o._mirror || o.libraryId || o.advertiser ||
+    (o.imgUrls && o.imgUrls.length) || (o.videoUrls && o.videoUrls.length));
+}
+
 // bloco superior do card: status · ID · data · plataformas · versões
 function fblTopHtml(o, detailBtn = "") {
-  const on = o.statusActive !== false;
-  const rows = [
-    `<span class="fbl-badge${on ? "" : " off"}"><span class="fbl-dot"></span>${on ? "Ativo" : "Inativo"}</span>`,
-    `<div class="fbl-mrow">Identificação da biblioteca: ${escHtml(o.libraryId || "—")}</div>`,
-  ];
-  if (o.published) rows.push(`<div class="fbl-mrow">Veiculação iniciada em ${escHtml(o.published)}</div>`);
-  rows.push(`<div class="fbl-mrow">Plataformas ${fblPlatIcons(o)}</div>`);
-  if (o.versionsCount || o.multiVersions)
-    rows.push(`<div class="fbl-mrow">${o.versionsCount ? `${o.versionsCount} anúncios usam esse criativo e esse texto` : "Esse anúncio tem várias versões"} <span class="fbl-info" title="O anunciante roda variações deste criativo — sinal de escala">ⓘ</span></div>`);
+  const rows = [];
+  if (fblIsMirror(o)) {
+    const on = o.statusActive !== false;
+    rows.push(`<span class="fbl-badge${on ? "" : " off"}"><span class="fbl-dot"></span>${on ? "Ativo" : "Inativo"}</span>`);
+    if (o.libraryId) rows.push(`<div class="fbl-mrow">Identificação da biblioteca: ${escHtml(o.libraryId)}</div>`);
+    if (o.published) rows.push(`<div class="fbl-mrow">Veiculação iniciada em ${escHtml(o.published)}</div>`);
+    rows.push(`<div class="fbl-mrow">Plataformas ${fblPlatIcons(o)}</div>`);
+    if (o.versionsCount || o.multiVersions)
+      rows.push(`<div class="fbl-mrow">${o.versionsCount ? `${o.versionsCount} anúncios usam esse criativo e esse texto` : "Esse anúncio tem várias versões"} <span class="fbl-info" title="O anunciante roda variações deste criativo — sinal de escala">ⓘ</span></div>`);
+  } else {
+    rows.push(`<span class="fbl-badge"><span class="fbl-dot" style="background:#1877f2"></span>Pesquisa ao vivo</span>`);
+    rows.push(`<div class="fbl-mrow">Abra na Biblioteca (ou instale a extensão 🪞) pra trazer status, ID, datas, criativos e ticket reais.</div>`);
+  }
   return `<div class="fbl-top">${rows.join("")}${detailBtn}</div>`;
 }
 
@@ -284,7 +294,7 @@ function fblAdBoxHtml(o, { full = false, emoji = "🔥" } = {}) {
   return `<div class="fbl-adbox">
     <div class="fbl-adhead">
       <span class="fbl-ava">${ava}</span>
-      <div class="fbl-who"><strong>${escHtml(o.advertiser || o.name || "Anunciante")}</strong><span>Patrocinado</span></div>
+      <div class="fbl-who"><strong>${escHtml(o.advertiser || o.name || "Anunciante")}</strong><span>${fblIsMirror(o) ? "Patrocinado" : "🔎 termo de pesquisa na Ad Library"}</span></div>
     </div>
     ${o.desc ? `<div class="fbl-copy${full ? " full" : ""}">${escHtml(o.desc)}</div>` : ""}
     ${fblMediaHtml(o, full)}
@@ -552,7 +562,9 @@ function renderPreviewModal(o, ctx = {}) {
     : libUrl;
 
   const countryName = FBL_COUNTRIES[(country || "BR").toUpperCase()] || country;
-  const advName = o.advertiser || o.name || "Anunciante";
+  const isMirror = fblIsMirror(o);
+  const advName = o.advertiser || (isMirror ? o.name : "") || "";
+  const advShow = advName || "— espelhe o anúncio pra identificar —";
   const oNorm = { ...o, imgUrls: imgs, videoUrls: videos, published: published || o.published };
 
   const body = `<div class="modal fbl-modal" role="dialog" aria-label="Detalhes do anúncio">
@@ -573,8 +585,8 @@ function renderPreviewModal(o, ctx = {}) {
           <h4>Sobre o rótulo</h4>
           <p class="fbl-note">Com base na localização e na categoria do anúncio, os anunciantes podem optar por divulgar ou ser obrigados a divulgar informações sobre si mesmos ou sobre o próprio anúncio.</p>
           <div class="fbl-rrow"><span class="fbl-ric">🌐</span><div><span>Localização</span><b>${escHtml(countryName)}</b></div></div>
-          <div class="fbl-rrow"><span class="fbl-ric">👤</span><div><span>Anunciante</span><b>${escHtml(advName)}</b></div></div>
-          <div class="fbl-rrow"><span class="fbl-ric">👤</span><div><span>Pagador</span><b>${escHtml(advName)}</b></div></div>
+          <div class="fbl-rrow"><span class="fbl-ric">👤</span><div><span>Anunciante</span><b>${escHtml(advShow)}</b></div></div>
+          <div class="fbl-rrow"><span class="fbl-ric">👤</span><div><span>Pagador</span><b>${escHtml(advShow)}</b></div></div>
         </section>
 
         <section class="fbl-sec">
@@ -582,7 +594,7 @@ function renderPreviewModal(o, ctx = {}) {
           <div class="fbl-advrow">
             <span class="fbl-ava big">${o.avatarUrl ? `<img src="${escHtml(o.avatarUrl)}" alt="">` : `<span>${emoji}</span>`}</span>
             <div>
-              <b>${escHtml(advName)}</b>
+              <b>${escHtml(advName || o.name || "Anunciante")}</b>
               ${(o.handles && o.handles.length) ? `<span class="fbl-subtle">${o.handles.map((h) => "@" + escHtml(h)).join(" · ")}</span>` : ""}
               ${o.followers ? `<span class="fbl-subtle">${escHtml(o.followers)} seguidores</span>` : ""}
               ${o.libraryId ? `<span class="fbl-subtle">Identificação da biblioteca: ${escHtml(o.libraryId)}</span>` : ""}
@@ -593,8 +605,10 @@ function renderPreviewModal(o, ctx = {}) {
             ${bestCreative ? `<button type="button" data-fb-best="${escHtml(bestCreative)}">🎬 Ver melhor criativo (${videos.length ? "vídeo" : "imagem"})</button>` : ""}
             ${o.site ? `<a href="${escHtml(o.site)}" target="_blank" rel="noopener">🌐 Página de vendas / VSL do anunciante ↗</a>` : ""}
             ${o.fbPage ? `<a href="${escHtml(o.fbPage)}" target="_blank" rel="noopener">📘 Página no Facebook ↗</a>` : ""}
-            <a href="${escHtml(allAdsUrl)}" target="_blank" rel="noopener">🔎 Ver TODOS os anúncios deste anunciante ↗</a>
-            <a href="${escHtml(libUrl)}" target="_blank" rel="noopener">📚 Abrir na Biblioteca de Anúncios ↗</a>
+            ${isMirror
+              ? `<a href="${escHtml(allAdsUrl)}" target="_blank" rel="noopener">🔎 Ver TODOS os anúncios deste anunciante ↗</a>
+                 <a href="${escHtml(libUrl)}" target="_blank" rel="noopener">📚 Abrir na Biblioteca de Anúncios ↗</a>`
+              : `<a class="hl" href="${escHtml(libUrl)}" target="_blank" rel="noopener">🪞 Abrir esta pesquisa na Biblioteca do Facebook ↗</a>`}
           </div>
         </section>
 
