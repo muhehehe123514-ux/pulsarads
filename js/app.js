@@ -1156,6 +1156,8 @@ function refreshCrAiOffers() {
 const CR_RENDER_STYLES = {
   foto: {
     name: "📷 Fotorrealista (estúdio)",
+    rule: "o resultado é uma FOTOGRAFIA REAL de estúdio, fotorrealista — nunca desenho, ilustração, cartoon, anime ou render 3D estilizado.",
+    neg: "cartoon, illustration, drawing, anime, painting, sketch, stylized 3d render, plastic skin, doll",
     build: (subject, themeName, space) =>
       `Fotografia publicitária premium de alta conversão. Cena principal: ${subject}. ` +
       `Foto comercial de estúdio profissional — lente 85mm f/1.8, foco cravado no assunto, profundidade de campo rasa ` +
@@ -1164,6 +1166,8 @@ const CR_RENDER_STYLES = {
   },
   cinema: {
     name: "🎬 Cinematográfico (grupo/mashup)",
+    rule: "o resultado é UMA cena fotográfica cinematográfica única e coesa (frame de filme) — nunca colagem, nunca grade/tela dividida, nunca pôster com texto.",
+    neg: "collage, grid, split screen, comic panels, storyboard, movie poster text, multiple separate images",
     build: (subject) =>
       `Retrato cinematográfico estilo selfie/grupo, câmera grande angular em perspectiva dramática. Cena: ${subject}. ` +
       `Composição: assunto principal em primeiro plano, elementos/personagens de apoio dispostos ao redor em profundidade em camadas, ` +
@@ -1173,6 +1177,8 @@ const CR_RENDER_STYLES = {
   },
   produto3d: {
     name: "📦 Produto Premium 3D (cápsula/vitrine)",
+    rule: "o resultado é UM ÚNICO PRODUTO físico premium em destaque (render de produto) — nunca uma pessoa como assunto principal, nunca arte plana/adesivo, nunca cena ampla de paisagem.",
+    neg: "flat sticker, 2d artwork, person as main subject, portrait, wide landscape scene, collage, cluttered background",
     build: (subject) =>
       `Render 3D cinematográfico ultra-realista de embalagem/vitrine premium para: ${subject}. ` +
       `Objeto principal flutuando no ar com sombra suave abaixo, materiais em metal polido brilhante e vidro acrílico cristalino transparente, ` +
@@ -1181,7 +1187,7 @@ const CR_RENDER_STYLES = {
   },
   holografico: {
     name: "✨ Adesivo Holográfico / Colecionável",
-    flat: true, // resultado TEM que ser adesivo plano, nunca boneco/objeto 3D
+    rule: "o resultado é um ADESIVO PLANO (flat 2D die-cut sticker) fotografado — a arte é ilustração 2D impressa; NUNCA um boneco, brinquedo, action figure ou objeto 3D em pé.",
     neg: "3d figure, figurine, action figure, toy, sculpture, statue, plush, doll, diorama, standing 3d object, volumetric character",
     build: (subject) =>
       `Die-cut holographic vinyl STICKER (adesivo PLANO) de ${subject}. ` +
@@ -1193,7 +1199,7 @@ const CR_RENDER_STYLES = {
   },
   reluzente: {
     name: "🌟 Adesivo Reluzente (glitter/brilho)",
-    flat: true,
+    rule: "o resultado é um ADESIVO PLANO reluzente (flat 2D die-cut sticker) fotografado — a arte é ilustração 2D impressa; NUNCA um boneco, brinquedo, action figure ou objeto 3D em pé.",
     neg: "3d figure, figurine, action figure, toy, sculpture, statue, plush, doll, diorama, standing 3d object, volumetric character",
     build: (subject) =>
       `Die-cut glitter vinyl STICKER (adesivo PLANO reluzente) de ${subject}. ` +
@@ -1205,6 +1211,8 @@ const CR_RENDER_STYLES = {
   },
   cartoon3d: {
     name: "🧸 3D Animação (estilo Pixar)",
+    rule: "o resultado é um RENDER 3D estilo filme de animação (Pixar/DreamWorks) — nunca fotografia real de pessoa, nunca desenho 2D chapado, nunca anime.",
+    neg: "real photograph, live action, photorealistic human skin, 2d flat drawing, sketch, anime lineart, comic style",
     build: (subject) =>
       `Cena 3D estilo animação de estúdio (tipo Pixar/Dreamworks) em render cinematográfico. Cena: ${subject}. ` +
       `Personagens/objetos com proporções estilizadas e texturas realistas suaves, iluminação quente e aconchegante vinda de janela ou fonte natural, ` +
@@ -1213,6 +1221,8 @@ const CR_RENDER_STYLES = {
   },
   textura: {
     name: "🌊 Textura Abstrata Premium (fundo)",
+    rule: "o resultado é 100% ABSTRATO (textura/fundo pra design) — nenhum objeto reconhecível, nenhuma pessoa, nenhum personagem, nenhum produto, nenhuma cena.",
+    neg: "person, face, character, hands, animal, product, object, building, landscape scene, recognizable shapes",
     build: (subject) =>
       `Fundo/textura abstrata premium em close-up macro para uso em design: ${subject}. ` +
       `Padrão fluido e orgânico com alto nível de detalhe — pode ser líquido metálico, plástico amassado, água fractal, tinta ou fumaça, ` +
@@ -1414,12 +1424,11 @@ function buildAiPrompt() {
   const refLead = crAiRefUrl
     ? `${refName}REGRA MÁXIMA de fidelidade à imagem de referência: preserve 100% das características originais do sujeito — formato do corpo, cores exatas, proporções, roupas, acessórios, rosto, dentes, olhos e textura (ex.: se é uma esponja quadrada amarela com furos, calça marrom e dois dentes grandes, TEM que continuar exatamente assim). Mude SOMENTE o que for pedido: cenário, pose, posição, iluminação e estilo de arte. `
     : "";
-  // trava de FORMATO: estilos de adesivo têm que sair PLANOS (a referência
-  // fotográfica tende a puxar pra "boneco 3D" — isso aqui impede)
-  const flatLock = style.flat
-    ? " REGRA FINAL DE FORMATO: o resultado é um ADESIVO PLANO (flat 2D die-cut sticker) fotografado — a arte é ilustração 2D impressa; NUNCA um boneco, brinquedo, action figure ou objeto 3D em pé."
-    : "";
-  return `${refLead}${cap(textLock)}. ${scene} IMPORTANTE, sem exceções: ${textLock}; ${ANATOMY_LOCK}; sem objetos derretidos ou distorcidos.${flatLock}`;
+  // trava de FORMATO por estilo: cada estilo declara o que o resultado TEM
+  // que ser (foto real × render 3D × adesivo plano × abstrato…) — a regra
+  // fecha o prompt porque referência/briefing tendem a puxar pra outro formato
+  const formatRule = style.rule ? ` REGRA FINAL DE FORMATO: ${style.rule}` : "";
+  return `${refLead}${cap(textLock)}. ${scene} IMPORTANTE, sem exceções: ${textLock}; ${ANATOMY_LOCK}; sem objetos derretidos ou distorcidos.${formatRule}`;
 }
 
 $("#btnCrAiBuild").addEventListener("click", () => {
