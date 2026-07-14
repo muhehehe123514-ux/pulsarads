@@ -556,6 +556,7 @@ var goodName = function(s){
   s = (s || '').trim();
   if(s.length < 6) return '';
   if(/^(apenas|s[óo]\\b|por apenas|promo[çc][ãa]o|oferta|r\\$|\\d|saiba mais|compre|garanta|acesse|clique|link|www\\.)/i.test(s)) return '';
+  if(/\\bvoc[êe]\\b|ficar de fora|n[ãa]o perca|imperd[ií]vel|[úu]ltim[ao]s? (vagas|unidades|horas)|aten[çc][ãa]o|aproveite|chegou a hora/i.test(s)) return '';
   if(/r\\$\\s*\\d/i.test(s) && s.length < 34) return '';
   return s;
 };

@@ -612,10 +612,11 @@ function admRenderCloud() {
         const act = u.activatedAt ? ` · ativado em ${br(u.activatedAt)}` : "";
         return `<div class="out-item adm-cloud-user" data-adm-open="${escHtml(u.user)}">
           <div><span class="out-tag">${escHtml(u.user)}</span>
-          <div class="out-text">${pill}${act}${planInfo}${u.created ? " · conta criada em " + br(u.created) : ""}</div></div>
+          <div class="out-text">${pill}${act}${planInfo}</div></div>
           <div class="out-actions"><span class="hint">clique pra licenciar ▾</span></div>
         </div>
         <div class="adm-grant" data-adm-panel="${escHtml(u.user)}" hidden>
+          <span class="hint" style="flex-basis:100%">📅 Mais informações: conta criada em ${br(u.created) || "—"}${u.activatedAt ? ` · plano ativado em ${br(u.activatedAt)}` : ""}${u.paidUntil && u.paidUntil !== "vida" ? ` · termina em ${br(u.paidUntil)}` : u.paidUntil === "vida" ? " · plano vitalício ♾️" : ""}</span>
           <label>Plano
             <select data-g-plan><option value="pro">⚡ Pro</option><option value="max">🚀 Max</option></select>
           </label>

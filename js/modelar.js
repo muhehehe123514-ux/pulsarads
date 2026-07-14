@@ -71,7 +71,9 @@ function mdSubject(o) {
   const clean = (s) => (s || "").replace(/[✀-➿\ud83c-􏰀-\udfff☀-⛿️]/g, "").replace(/\s+/g, " ").trim();
   const junk = (s) => !s || s.length < 8 ||
     /^(apenas|s[óo]\b|por apenas|promo[çc][ãa]o|oferta|r\$|\d|saiba mais|garanta|acesse|clique|compre|www\.)/i.test(s) ||
-    /r\$\s*\d/i.test(s);
+    /r\$\s*\d/i.test(s) ||
+    // frase-GANCHO de anúncio não é nome de produto ("Você não pode ficar de fora")
+    /\bvoc[êe]\b|ficar de fora|n[ãa]o perca|imperd[ií]vel|[úu]ltim[ao]s? (vagas|unidades|horas)|aten[çc][ãa]o|corre[ular\s!]*$|aproveite|chegou a hora|desconto|liquida/i.test(s);
   let n = clean(o.name);
   if (!junk(n)) return n.slice(0, 70);
   const d = clean((o.desc || "") + " " + (o.notes || ""));

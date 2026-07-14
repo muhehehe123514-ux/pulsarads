@@ -1217,9 +1217,11 @@ const ANATOMY_LOCK = "anatomia perfeita quando houver pessoas: exatamente 2 bra�
 
 // ---------- Imagem de REFERÊNCIA (hospedada no backend por 30 min) ----------
 let crAiRefUrl = "";
+let crAiRefTitle = ""; // nome famoso achado na internet (entra no prompt)
 $("#btnCrAiRef")?.addEventListener("click", () => $("#crAiRefFile")?.click());
 $("#btnCrAiRefClear")?.addEventListener("click", () => {
   crAiRefUrl = "";
+  crAiRefTitle = "";
   $("#crAiRefPreview").hidden = true;
   $("#crAiRefFile").value = "";
   toast("Referência removida ✕");
@@ -1274,8 +1276,9 @@ $("#btnCrAiWebRef")?.addEventListener("click", async () => {
     cv.width = Math.round(img.naturalWidth * sc);
     cv.height = Math.round(img.naturalHeight * sc);
     cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    crAiRefTitle = hit.title; // o nome famoso entra no prompt (fidelidade máxima)
     await crUploadRefDataUrl(cv.toDataURL("image/jpeg", 0.88), "✅ base: " + hit.title);
-    toast(`🌐 Referência encontrada: ${hit.title} — a IA vai manter as características dessa base`);
+    toast(`🌐 Referência encontrada: ${hit.title} — a IA vai manter TODAS as características dessa base`);
   } catch (e) {
     toast("❌ " + (e.message || "falhou — tente de novo"));
   }
@@ -1291,6 +1294,7 @@ $("#crAiRefFile")?.addEventListener("change", async (e) => {
   prev.hidden = false;
   st.textContent = "enviando…";
   crAiRefUrl = "";
+  crAiRefTitle = "";
   try {
     // comprime pra no máx 1024px (rápido de subir e suficiente pra IA)
     const bmp = await createImageBitmap(f);
@@ -1342,8 +1346,12 @@ function buildAiPrompt() {
   // então a imagem sai limpa e o título entra depois no 🎨 Estúdio ao lado.
   // Com referência: o logo/texto da referência é preservado; nada NOVO é escrito.
   const textLock = crAiRefUrl ? NO_TEXT_LOCK_REF : NO_TEXT_LOCK;
+  // fidelidade TOTAL: com referência, as características do sujeito são LEI —
+  // só mudam cenário, pose, iluminação e estilo. Se a referência veio da
+  // internet, o NOME famoso entra no prompt (a IA conhece e reproduz certo).
+  const refName = crAiRefTitle ? `O sujeito principal é ${crAiRefTitle}. ` : "";
   const refLead = crAiRefUrl
-    ? "Use a imagem de referência fornecida como BASE FIEL da criação: mantenha o logotipo, as cores, as formas e a identidade visual exatamente como estão na referência, apenas aplicando o estilo pedido em volta. "
+    ? `${refName}REGRA MÁXIMA de fidelidade à imagem de referência: preserve 100% das características originais do sujeito — formato do corpo, cores exatas, proporções, roupas, acessórios, rosto, dentes, olhos e textura (ex.: se é uma esponja quadrada amarela com furos, calça marrom e dois dentes grandes, TEM que continuar exatamente assim). Mude SOMENTE o que for pedido: cenário, pose, posição, iluminação e estilo de arte. `
     : "";
   return `${refLead}${cap(textLock)}. ${scene} IMPORTANTE, sem exceções: ${textLock}; ${ANATOMY_LOCK}; sem objetos derretidos ou distorcidos.`;
 }
@@ -1389,10 +1397,48 @@ function pollUrl(prompt, seed, story, refUrl) {
     `&negative_prompt=${encodeURIComponent(neg)}`;
 }
 
-$("#btnCrAiGen")?.addEventListener("click", () => {
+// 🎯 APRENDE O SEU PADRÃO: quando você baixa/usa um criativo, ele vira
+// favorito — pedidos parecidos no futuro usam esse criativo como base.
+const AI_LIKES_KEY = "pulsar_ai_likes";
+const aiLikes = () => { try { return JSON.parse(localStorage.getItem(AI_LIKES_KEY) || "[]"); } catch { return []; } };
+function aiSaveLike(card) {
+  if (!card?.dataset?.url) return;
+  const brief = ($("#crAiBrief")?.value || "").trim().toLowerCase();
+  const likes = aiLikes().filter((l) => l.url !== card.dataset.url);
+  likes.unshift({ brief, url: card.dataset.url, style: $("#crRenderStyle")?.value || "foto", ts: Date.now() });
+  localStorage.setItem(AI_LIKES_KEY, JSON.stringify(likes.slice(0, 8)));
+}
+function aiFindLike(brief) {
+  const words = (brief || "").toLowerCase().split(/\s+/).filter((w) => w.length >= 4);
+  if (!words.length) return null;
+  for (const l of aiLikes()) {
+    const lw = (l.brief || "").split(/\s+/).filter((w) => w.length >= 4);
+    if (!lw.length) continue;
+    const hits = words.filter((w) => lw.includes(w)).length;
+    if (hits / Math.max(words.length, 1) >= 0.5) return l;
+  }
+  return null;
+}
+
+$("#btnCrAiGen")?.addEventListener("click", async () => {
   let prompt = $("#crAiPrompt").value.trim();
   if (!prompt) { prompt = buildAiPrompt(); $("#crAiPrompt").value = prompt; }
   if (!window.canUse()) return;
+
+  // sem referência manual? se o pedido parece um que você já CURTIU,
+  // usa aquele criativo como base pra manter o mesmo padrão visual
+  if (!crAiRefUrl) {
+    const like = aiFindLike($("#crAiBrief")?.value || "");
+    if (like) {
+      crAiRefUrl = like.url;
+      crAiRefTitle = "";
+      $("#crAiRefThumb").src = like.url;
+      $("#crAiRefPreview").hidden = false;
+      $("#crAiRefStatus").textContent = "🎯 seu padrão favorito (remova com ✕ se não quiser)";
+      toast("🎯 Pedido parecido com um que você curtiu — mantendo o mesmo padrão visual");
+    }
+  }
+
   const n = +($("#crAiCount")?.value || 1);
   const story = $("#crFormat").value === "story";
   const box = $("#crAiResults");
@@ -1400,19 +1446,25 @@ $("#btnCrAiGen")?.addEventListener("click", () => {
   const btn = $("#btnCrAiGen");
   btn.disabled = true;
   const label = btn.textContent;
-  btn.textContent = "🎨 Gerando…";
-  let charged = false, done = 0;
-  const finish = () => { if (++done >= n) { btn.disabled = false; btn.textContent = label; } };
+  let charged = false;
 
+  // SEQUENCIAL: o gerador grátis derruba pedidos simultâneos — um por vez
+  // cada um chega e aparece; era por isso que "2+ criativos" falhava.
   for (let i = 0; i < n; i++) {
+    btn.textContent = `🎨 Gerando ${i + 1}/${n}…`;
     const card = document.createElement("div");
     card.className = "ai-result";
     box.appendChild(card);
-    aiFillCard(card, prompt, story, finish, () => {
-      if (!charged) { charged = true; window.spendUse(); }
+    if (i === 0) box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    await new Promise((done) => {
+      aiFillCard(card, prompt, story, done, () => {
+        if (!charged) { charged = true; window.spendUse(); }
+      });
     });
+    if (i < n - 1) await new Promise((r) => setTimeout(r, 1200)); // respiro entre pedidos
   }
-  box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  btn.disabled = false;
+  btn.textContent = label;
 });
 
 // gera (ou REGENERA) uma imagem dentro de um card de resultado
@@ -1462,12 +1514,14 @@ $("#crAiResults")?.addEventListener("click", async (e) => {
       a.download = `pulsarads-ia-${Date.now()}.jpg`;
       a.click();
       URL.revokeObjectURL(a.href);
-      toast("Criativo baixado 🎨");
+      aiSaveLike(card); // baixou = curtiu → vira padrão pra pedidos parecidos
+      toast("Criativo baixado 🎨 (padrão salvo pra pedidos parecidos 🎯)");
     } catch {
       window.open(card.dataset.url, "_blank", "noopener");
     }
   }
   if (e.target.closest("[data-ai-use]") && img && window.setStudioImageUrl) {
+    aiSaveLike(card); // usou = curtiu → vira padrão pra pedidos parecidos
     window.setStudioImageUrl(img.src);
   }
   if (e.target.closest("[data-ai-regen]")) {

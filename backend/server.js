@@ -97,7 +97,10 @@ async function applyGrant(name, plan, opts = {}) {
   else {
     const active = rec.paidUntil && rec.paidUntil !== "vida" && new Date(rec.paidUntil) > new Date();
     const base = opts.fromDate ? new Date(opts.fromDate) : (active ? new Date(rec.paidUntil) : new Date());
-    base.setDate(base.getDate() + (opts.days || GRANT_DAYS));
+    // contagem EXATA: 1 dia começando hoje = válido só até o fim de hoje
+    // (o dia de hoje conta como dia 1; sem isso, "1 dia" virava 2-3 no relógio)
+    const startFresh = !opts.fromDate && !active;
+    base.setDate(base.getDate() + (opts.days || GRANT_DAYS) - (startFresh ? 1 : 0));
     rec.plan = plan; rec.paidUntil = base.toISOString().slice(0, 10);
   }
   rec.updated = new Date().toISOString();
