@@ -278,7 +278,15 @@ const MD_FONTS = [
   { name: "Lora (editorial)", stack: "'Lora',Georgia,serif" },
   { name: "Roboto (limpa)", stack: "'Roboto',system-ui,sans-serif" },
   { name: "Sistema (rápida)", stack: "system-ui,-apple-system,'Segoe UI',sans-serif" },
+  { name: "Plus Jakarta Sans (clean premium)", stack: "'Plus Jakarta Sans',system-ui,sans-serif" },
+  { name: "Merriweather (serif clássica)", stack: "'Merriweather',Georgia,serif" },
+  { name: "DM Serif Display (capa elegante)", stack: "'DM Serif Display',Georgia,serif" },
+  { name: "Anton (condensada de impacto)", stack: "'Anton',Impact,sans-serif" },
+  { name: "Archivo Black (peso máximo)", stack: "'Archivo Black',Impact,sans-serif" },
+  { name: "Chewy (manuscrita divertida)", stack: "'Chewy',cursive" },
 ];
+// URL única com TODAS as famílias acima (usada no editor e no HTML final)
+const MD_FONTS_URL = "https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Montserrat:wght@400;600;800&family=Playfair+Display:wght@600;800&family=Oswald:wght@500;700&family=Lora:wght@400;600&family=Roboto:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;800&family=Merriweather:wght@400;700;900&family=DM+Serif+Display&family=Anton&family=Archivo+Black&family=Chewy&display=swap";
 
 // popula selects de estilo
 $("#mdPalette").innerHTML = MD_PALETTES.map((p, i) => `<option value="${i}">${p.name}</option>`).join("");
@@ -306,7 +314,7 @@ function mdApplyStyle() {
   if (!doc.getElementById("md-fonts")) {
     const l = doc.createElement("link");
     l.id = "md-fonts"; l.rel = "stylesheet";
-    l.href = "https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Montserrat:wght@400;600;800&family=Playfair+Display:wght@600;800&family=Oswald:wght@500;700&family=Lora:wght@400;600&family=Roboto:wght@400;700&display=swap";
+    l.href = MD_FONTS_URL;
     doc.head.appendChild(l);
   }
 }
@@ -398,7 +406,7 @@ function buildSalesPage() {
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escHtml(name)} — ${escHtml(md.headline)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link id="md-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Montserrat:wght@400;600;800&family=Playfair+Display:wght@600;800&family=Oswald:wght@500;700&family=Lora:wght@400;600&family=Roboto:wght@400;700&display=swap">
+<link id="md-fonts" rel="stylesheet" href="${MD_FONTS_URL}">
 <style id="md-vars">${mdVarsCss()}</style>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}

@@ -176,7 +176,18 @@ async function ocrPreprocessVariants(file) {
   const cvB = document.createElement("canvas"); cvB.width = w; cvB.height = h;
   cvB.getContext("2d").putImageData(idB, 0, 0);
 
-  return { gray: cvA, bin: cvB };
+  // variante C: binarizada INVERTIDA — TEXTO BRANCO/CLARO sobre foto (legendas
+  // de card, nomes sobre imagem) vira preto sobre branco, que é o que o OCR lê.
+  // Sem isso, "Spider Man" em branco vira "ider Man" ou some.
+  const idC = cx.createImageData(w, h);
+  for (let p = 0, i = 0; p < n; p++, i += 4) {
+    const v = sharp[p] > threshold ? 0 : 255;
+    idC.data[i] = idC.data[i + 1] = idC.data[i + 2] = v; idC.data[i + 3] = 255;
+  }
+  const cvC = document.createElement("canvas"); cvC.width = w; cvC.height = h;
+  cvC.getContext("2d").putImageData(idC, 0, 0);
+
+  return { gray: cvA, bin: cvB, binInv: cvC };
 }
 
 // normaliza pra comparar/deduplicar texto entre as duas passadas
@@ -211,7 +222,7 @@ $("#btnOcrRun").addEventListener("click", async () => {
     await loadTesseract();
     const worker = await getOcrWorker(status);
     status.textContent = "Preparando a imagem (ampliação 6x + nitidez + contraste)…";
-    const { gray, bin } = await ocrPreprocessVariants(ocrFile);
+    const { gray, bin, binInv } = await ocrPreprocessVariants(ocrFile);
 
     status.textContent = "Lendo parágrafos e copy…";
     const passA = await ocrRecognizePass(worker, gray, "6");
@@ -231,20 +242,28 @@ $("#btnOcrRun").addEventListener("click", async () => {
 
     status.textContent = "Caçando texto minúsculo (selos, legendas, marcas d'água)…";
     const passB = await ocrRecognizePass(worker, bin, "11");
-    const seen = new Set(parts.map(ocrNorm));
-    const extra = (passB.data.lines || [])
+    status.textContent = "Lendo texto CLARO sobre foto (legendas brancas)…";
+    const passC = await ocrRecognizePass(worker, binInv, "11");
+
+    // junta as passadas B (texto escuro) e C (texto branco/claro invertido)
+    const pool = [...(passB.data.lines || []), ...(passC.data.lines || [])]
       .filter((l) => (l.confidence || 0) >= 55 && ocrLooksReal(l.text))
-      .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
-      .slice(0, 12) // só os 12 achados mais confiáveis — nada de chuva de lixo
-      .map((l) => l.text.trim().replace(/\s{2,}/g, " "))
-      .filter((t) => {
-        const k = ocrNorm(t);
-        if (!k || seen.has(k)) return false;
-        // ignora se já está CONTIDO em algum parágrafo grande da passada A
-        if (parts.some((p) => ocrNorm(p).includes(k))) return false;
-        seen.add(k);
-        return true;
-      });
+      .map((l) => ({ t: l.text.trim().replace(/\s{2,}/g, " "), c: l.confidence || 0 }))
+      // mais LONGOS primeiro: "Spider Man" entra antes e mata o fragmento "ider Man"
+      .sort((a, b) => (b.t.length - a.t.length) || (b.c - a.c));
+
+    const seen = new Set(parts.map(ocrNorm));
+    const extra = [];
+    for (const { t } of pool) {
+      const k = ocrNorm(t);
+      if (!k || seen.has(k)) continue;
+      // pula se já está contido num parágrafo da passada A ou num achado maior
+      if (parts.some((p) => ocrNorm(p).includes(k))) continue;
+      if (extra.some((e) => ocrNorm(e).includes(k))) continue;
+      seen.add(k);
+      extra.push(t);
+      if (extra.length >= 14) break; // só os melhores — nada de chuva de lixo
+    }
     parts = [...parts, ...extra];
 
     if (!parts.length) {

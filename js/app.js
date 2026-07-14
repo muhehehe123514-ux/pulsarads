@@ -575,13 +575,41 @@ const CR_THEMES = [
   { name: "Grafite + verde-limão", g: ["#111827", "#1f2937"], accent: "#a3e635", ctaBg: "#a3e635", ctaText: "#111827" },
   { name: "Lavanda suave", g: ["#a78bfa", "#c4b5fd"], accent: "#f5f3ff", ctaBg: "#7c3aed", ctaText: "#ffffff" },
   { name: "Areia (nude quente)", g: ["#d6a77a", "#a16207"], accent: "#fef3c7", ctaBg: "#78350f", ctaText: "#fef3c7" },
+  { name: "Aurora (violeta → teal profundo)", g: ["#4c1d95", "#134e4a"], accent: "#5eead4", ctaBg: "#2dd4bf", ctaText: "#042f2e" },
+  { name: "Esmeralda black (premium)", g: ["#022c22", "#000000"], accent: "#6ee7b7", ctaBg: "#10b981", ctaText: "#022c22" },
+  { name: "Bronze noir (luxo)", g: ["#1c1917", "#292524"], accent: "#e7c98f", ctaBg: "#d4a95c", ctaText: "#1c1917" },
+  { name: "Elétrico profundo (azul neon)", g: ["#0c1445", "#1d4ed8"], accent: "#93c5fd", ctaBg: "#60a5fa", ctaText: "#0c1445" },
+  { name: "Café premium (marrom quente)", g: ["#3f2212", "#1f130b"], accent: "#fed7aa", ctaBg: "#f59e0b", ctaText: "#3f2212" },
 ];
 const CR_LAYOUTS = ["Clássico (à esquerda)", "Centralizado", "Base impactante", "Painel diagonal", "Moldura minimalista", "Explosão de raios", "Faixa inferior", "Cartão central", "Topo alinhado"];
-const CR_PATTERNS = ["Sem padrão", "Bolinhas", "Grade fina", "Ondas", "Diagonais", "Confete", "Malha suave"];
+const CR_PATTERNS = ["Sem padrão", "Bolinhas", "Grade fina", "Ondas", "Diagonais", "Confete", "Malha suave", "Grão analógico", "Aurora (bolhas de luz)", "Meio-tom (halftone)", "Feixes de luz", "Vinheta premium", "Papel kraft (fibras)"];
+
+// fontes do Estúdio — as mesmas famílias premium ficam disponíveis no site inteiro
+const CR_FONTS = [
+  { name: "Space Grotesk (display padrão)", f: "'Space Grotesk', 'Inter', sans-serif" },
+  { name: "Inter (texto padrão)", f: "'Inter', sans-serif" },
+  { name: "Plus Jakarta Sans (clean premium)", f: "'Plus Jakarta Sans', sans-serif" },
+  { name: "Merriweather (serif editorial)", f: "'Merriweather', Georgia, serif" },
+  { name: "DM Serif Display (capa elegante)", f: "'DM Serif Display', Georgia, serif" },
+  { name: "Anton (impacto condensado)", f: "'Anton', Impact, sans-serif" },
+  { name: "Archivo Black (peso máximo)", f: "'Archivo Black', Impact, sans-serif" },
+  { name: "Chewy (manuscrita divertida)", f: "'Chewy', cursive" },
+];
 
 $("#crTheme").innerHTML = CR_THEMES.map((t, i) => `<option value="${i}">${t.name}</option>`).join("");
 $("#crLayout").innerHTML = CR_LAYOUTS.map((l, i) => `<option value="${i}">${l}</option>`).join("");
 $("#crPattern").innerHTML = CR_PATTERNS.map((p, i) => `<option value="${i}">${p}</option>`).join("");
+if ($("#crFontHead")) {
+  $("#crFontHead").innerHTML = CR_FONTS.map((f, i) => `<option value="${i}">${f.name}</option>`).join("");
+  $("#crFontBody").innerHTML = CR_FONTS.map((f, i) => `<option value="${i}"${i === 1 ? " selected" : ""}>${f.name}</option>`).join("");
+}
+
+// garante que a fonte escolhida está carregada antes de desenhar no canvas
+function crLoadFonts() {
+  const fams = [CR_FONTS[+($("#crFontHead")?.value || 0)], CR_FONTS[+($("#crFontBody")?.value || 1)]];
+  Promise.allSettled(fams.flatMap((f) => [document.fonts.load(`700 60px ${f.f}`), document.fonts.load(`400 40px ${f.f}`)]))
+    .then(() => renderCreative());
+}
 
 function wrapText(ctx, text, maxWidth) {
   const words = text.split(" ");
@@ -645,6 +673,73 @@ function drawPattern(ctx, W, H, pattern, loop) {
         ctx.moveTo(x + 30, y); ctx.lineTo(x + 60, y + 30); ctx.lineTo(x + 30, y + 60); ctx.lineTo(x, y + 30);
         ctx.closePath(); ctx.stroke();
       }
+  } else if (pattern === 7) {
+    // grão analógico: pontinhos aleatórios (visual de filme/print editorial)
+    const rnd = (n) => Math.abs((Math.sin(n * 127.1) * 43758.5) % 1);
+    for (let i = 0; i < 1600; i++) {
+      ctx.globalAlpha = 0.03 + rnd(i + 11) * 0.06;
+      const s = 1 + rnd(i + 5) * 2.4;
+      ctx.fillRect(rnd(i) * W, rnd(i + 7) * H, s, s);
+    }
+  } else if (pattern === 8) {
+    // aurora: bolhas de luz enormes e suaves (glow premium)
+    const blobs = [[0.2, 0.25, 0.5], [0.85, 0.2, 0.42], [0.7, 0.85, 0.55], [0.12, 0.8, 0.38]];
+    blobs.forEach(([bx, by, br], i) => {
+      const g = ctx.createRadialGradient(W * bx, H * by + Math.sin(loop + i) * 14, 0, W * bx, H * by, W * br);
+      g.addColorStop(0, "rgba(255,255,255,0.16)");
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    });
+  } else if (pattern === 9) {
+    // meio-tom: pontos que crescem na diagonal (visual de revista)
+    ctx.globalAlpha = 0.1;
+    for (let y = 0; y < H + 40; y += 40)
+      for (let x = 0; x < W + 40; x += 40) {
+        const d = (x / W + y / H) / 2;
+        const r = 2 + d * 9;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+      }
+  } else if (pattern === 10) {
+    // feixes de luz diagonais suaves
+    ctx.save();
+    ctx.translate(W / 2, H / 2); ctx.rotate(-0.5); ctx.translate(-W / 2, -H / 2);
+    [[0.12, 0.16], [0.42, 0.1], [0.72, 0.13]].forEach(([px, alpha], i) => {
+      const bx = W * px + Math.sin(loop * 0.6 + i) * 20;
+      const g = ctx.createLinearGradient(bx, 0, bx + W * 0.16, 0);
+      g.addColorStop(0, "rgba(255,255,255,0)");
+      g.addColorStop(0.5, `rgba(255,255,255,${alpha})`);
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = g;
+      ctx.fillRect(-W * 0.5, -H * 0.5, W * 2, H * 2);
+    });
+    ctx.restore();
+  } else if (pattern === 11) {
+    // vinheta premium: bordas escurecidas, foco no centro (look de estúdio)
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,0.5)");
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  } else if (pattern === 12) {
+    // papel kraft: fibras horizontais + pontinhos quentes
+    const rnd = (n) => Math.abs((Math.sin(n * 91.7) * 24634.6) % 1);
+    ctx.strokeStyle = "rgba(255,244,220,0.05)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 90; i++) {
+      const y = rnd(i) * H, len = 60 + rnd(i + 3) * 260;
+      const x = rnd(i + 9) * W;
+      ctx.globalAlpha = 0.04 + rnd(i + 5) * 0.05;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y + (rnd(i + 13) - 0.5) * 6); ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(60,35,10,0.5)";
+    for (let i = 0; i < 260; i++) {
+      ctx.globalAlpha = 0.03 + rnd(i + 31) * 0.05;
+      ctx.fillRect(rnd(i + 17) * W, rnd(i + 23) * H, 2, 2);
+    }
   }
   ctx.restore();
 }
@@ -660,6 +755,8 @@ function drawCreative(t = 1, loop = 0) {
   const layout = +$("#crLayout").value;
   const pattern = +$("#crPattern").value;
   const anim = $("#crVidAnim").value;
+  const fHead = (CR_FONTS[+($("#crFontHead")?.value || 0)] || CR_FONTS[0]).f;
+  const fBody = (CR_FONTS[+($("#crFontBody")?.value || 1)] || CR_FONTS[1]).f;
   const stage = (a, b) => crEase((t - a) / (b - a));
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -780,7 +877,7 @@ function drawCreative(t = 1, loop = 0) {
     const a1 = stage(0, 0.3);
     ctx.globalAlpha = a1;
     const by = cy + (1 - a1) * slideY;
-    ctx.font = "700 34px 'Inter', sans-serif";
+    ctx.font = `700 34px ${fBody}`;
     const bw = ctx.measureText(badge.toUpperCase()).width + 56;
     const bx = centered ? cx - bw / 2 : cx;
     ctx.fillStyle = "rgba(255,255,255,0.18)";
@@ -799,7 +896,7 @@ function drawCreative(t = 1, loop = 0) {
   const headline = $("#crHeadline").value.trim() || "Sua oferta em destaque";
   ctx.fillStyle = "#ffffff";
   const hSize = layout === 4 ? 84 : 92;
-  ctx.font = `700 ${hSize}px 'Space Grotesk', 'Inter', sans-serif`;
+  ctx.font = `700 ${hSize}px ${fHead}`;
   const hLines = wrapText(ctx, headline, maxW);
   hLines.forEach((l, i) => {
     const a = stage(0.15 + i * 0.12, 0.5 + i * 0.12);
@@ -815,7 +912,7 @@ function drawCreative(t = 1, loop = 0) {
   if (sub) {
     const a = stage(0.5, 0.8);
     ctx.globalAlpha = a;
-    ctx.font = "400 44px 'Inter', sans-serif";
+    ctx.font = `400 44px ${fBody}`;
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     wrapText(ctx, sub, Math.min(maxW, W * 0.78)).forEach((l) => {
       ctx.fillText(l, cx, cy + 32 + (1 - a) * slideY);
@@ -829,7 +926,7 @@ function drawCreative(t = 1, loop = 0) {
   const cta = ($("#crCta").value.trim() || "QUERO AGORA").toUpperCase();
   const aCta = stage(0.68, 0.95);
   const pulse = loop > 0 ? 1 + (anim === "bounce" ? 0.08 * Math.abs(Math.sin(loop * 5)) : 0.03 * Math.sin(loop * 4)) : 1;
-  ctx.font = "700 44px 'Inter', sans-serif";
+  ctx.font = `700 44px ${fBody}`;
   const cw = ctx.measureText(cta).width + 120;
   const ctaX = centered ? cx - cw / 2 : cx;
   ctx.save();
@@ -870,11 +967,11 @@ function drawCreative(t = 1, loop = 0) {
     ctx.shadowColor = "transparent";
     ctx.fillStyle = theme.ctaText;
     ctx.textAlign = "center";
-    ctx.font = "700 30px 'Inter', sans-serif";
+    ctx.font = `700 30px ${fBody}`;
     ctx.fillText("SÓ", 0, -38);
-    ctx.font = "700 54px 'Space Grotesk', sans-serif";
+    ctx.font = `700 54px ${fHead}`;
     ctx.fillText(`R$ ${price.toFixed(2).replace(".", ",")}`.replace(",00", ""), 0, 18);
-    ctx.font = "600 26px 'Inter', sans-serif";
+    ctx.font = `600 26px ${fBody}`;
     ctx.fillText("hoje", 0, 58);
     ctx.restore();
     ctx.textAlign = centered ? "center" : "left";
@@ -941,6 +1038,8 @@ window.renderCreativeStudio = renderCreative;
 ["crFormat", "crTheme", "crLayout", "crPattern", "crBadge", "crHeadline", "crSub", "crCta", "crPrice", "crVidAnim"].forEach((id) =>
   $("#" + id).addEventListener("input", renderCreative)
 );
+// fontes: carrega a família escolhida antes de redesenhar o canvas
+["crFontHead", "crFontBody"].forEach((id) => $("#" + id)?.addEventListener("change", crLoadFonts));
 
 $("#btnCrRandom").addEventListener("click", () => {
   $("#crTheme").value = Math.floor(Math.random() * CR_THEMES.length);
@@ -1352,15 +1451,25 @@ const synth = window.speechSynthesis;
 let voices = [];
 
 // vozes neurais servidas pelo backend — todas testadas uma a uma
+// (as "Premium" são multilíngues da nova geração: falam português fluente
+//  com entonação ainda mais humana)
 const TTS_NEURAL = {
   female: [
     ["pt-BR-FranciscaNeural", "Francisca — feminina 🇧🇷 ⭐"],
     ["pt-BR-ThalitaNeural", "Thalita — feminina 🇧🇷"],
-    ["pt-BR-ThalitaMultilingualNeural", "Thalita Multilíngue — feminina 🇧🇷"],
+    ["pt-BR-ThalitaMultilingualNeural", "Thalita Premium — feminina 🇧🇷"],
+    ["en-US-AvaMultilingualNeural", "Ava Premium — feminina 🌎"],
+    ["en-US-EmmaMultilingualNeural", "Emma Premium — feminina 🌎"],
+    ["fr-FR-VivienneMultilingualNeural", "Vivienne Premium — feminina 🌎"],
+    ["de-DE-SeraphinaMultilingualNeural", "Seraphina Premium — feminina 🌎"],
     ["pt-PT-RaquelNeural", "Raquel — feminina 🇵🇹"],
   ],
   male: [
     ["pt-BR-AntonioNeural", "Antonio — masculina 🇧🇷 ⭐"],
+    ["en-US-AndrewMultilingualNeural", "Andrew Premium — masculina 🌎"],
+    ["en-US-BrianMultilingualNeural", "Brian Premium — masculina 🌎"],
+    ["fr-FR-RemyMultilingualNeural", "Remy Premium — masculina 🌎"],
+    ["de-DE-FlorianMultilingualNeural", "Florian Premium — masculina 🌎"],
     ["pt-PT-DuarteNeural", "Duarte — masculina 🇵🇹"],
   ],
 };

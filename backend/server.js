@@ -264,8 +264,14 @@ app.get("/api/status", async (req, res) => {
 const WebSocketTTS = require("ws");
 
 const TTS_VOICES = new Set([
+  // pt nativas
   "pt-BR-FranciscaNeural", "pt-BR-ThalitaNeural", "pt-BR-ThalitaMultilingualNeural",
   "pt-BR-AntonioNeural", "pt-PT-RaquelNeural", "pt-PT-DuarteNeural",
+  // multilíngues premium (falam português fluente) — todas testadas uma a uma
+  "en-US-AvaMultilingualNeural", "en-US-EmmaMultilingualNeural",
+  "fr-FR-VivienneMultilingualNeural", "de-DE-SeraphinaMultilingualNeural",
+  "en-US-AndrewMultilingualNeural", "en-US-BrianMultilingualNeural",
+  "fr-FR-RemyMultilingualNeural", "de-DE-FlorianMultilingualNeural",
 ]);
 // o serviço rejeita versões antigas do Edge; tenta em ordem até uma passar
 const TTS_EDGE_VERSIONS = ["132.0.2957.115", "135.0.3179.54", "138.0.3351.65"];
