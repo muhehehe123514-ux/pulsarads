@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260713e" />
-  <link rel="stylesheet" href="css/app.css?v=20260713e" />
+  <link rel="stylesheet" href="css/style.css?v=20260714a" />
+  <link rel="stylesheet" href="css/app.css?v=20260714a" />
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 </head>
 <body class="app-body auth-locked">
@@ -439,8 +439,18 @@
             </label>
           </div>
           <label class="lbl-block" style="margin-top:10px">O que você quer no criativo? (fale simples)
-            <textarea id="crAiBrief" rows="2" placeholder="Ex.: um pote de bolo caseiro na mesa de madeira, luz quente, texto 'Receitas que vendem', clima aconchegante"></textarea>
+            <textarea id="crAiBrief" rows="2" placeholder="Ex.: um pote de bolo caseiro na mesa de madeira, luz quente, clima aconchegante"></textarea>
           </label>
+          <div class="cr-ref-row">
+            <input type="file" id="crAiRefFile" accept="image/png,image/jpeg,image/webp" hidden />
+            <button type="button" class="btn btn-ghost btn-sm" id="btnCrAiRef">🖼️ Enviar imagem de referência (opcional)</button>
+            <div class="cr-ref-preview" id="crAiRefPreview" hidden>
+              <img id="crAiRefThumb" alt="referência" />
+              <span id="crAiRefStatus">enviando…</span>
+              <button type="button" class="btn-copy" id="btnCrAiRefClear" title="Remover referência">✕</button>
+            </div>
+          </div>
+          <p class="hint" style="margin:6px 0 0">A referência vira a <strong>base fiel</strong> da criação: logo, produto ou estilo que a IA deve seguir (ex.: envie a logo da marca pra criar um adesivo holográfico dela, sem deformar).</p>
           <div class="form-actions">
             <button type="button" class="btn btn-primary btn-sm" id="btnCrAiBuild">✨ Criar prompt profissional</button>
           </div>
@@ -603,7 +613,7 @@
       <section class="panel" id="tool-audio">
         <div class="panel-head">
           <h2>🔊 Gerador de Áudio (voz neural)</h2>
-          <p>Transforme sua copy em narração com as <strong>vozes neurais/naturais em português</strong> — as mais realistas disponíveis no seu navegador.</p>
+          <p>Transforme sua copy em narração com <strong>vozes 100% neurais e humanas em português</strong> — geradas no servidor do PulsarAds, funcionam em qualquer navegador e você baixa o MP3.</p>
         </div>
         <div class="card">
           <label class="lbl-block">Texto pra narrar
@@ -626,14 +636,11 @@
             <label>Voz neural <select id="ttsVoice"></select></label>
           </div>
           <div class="form-actions">
-            <button class="btn btn-primary btn-sm" id="btnTtsPlay">▶ Reproduzir</button>
+            <button class="btn btn-primary btn-sm" id="btnTtsPlay">▶ Gerar e reproduzir</button>
             <button class="btn btn-ghost btn-sm" id="btnTtsStop">⏹ Parar</button>
+            <button class="btn btn-ghost btn-sm" id="btnTtsDl" hidden>⬇ Baixar MP3</button>
           </div>
-          <p class="hint" id="ttsHint">Só mostramos vozes <strong>100% neurais e humanas</strong> — nunca voz de robô, nunca voz do Google. Pra gravar, use o gravador de tela/áudio do seu sistema enquanto reproduz.</p>
-          <div class="bw-flag risk-med" id="ttsNoVoiceWarn" hidden style="margin-top:12px">
-            <span class="bw-term">⚠️ Nenhuma voz neural encontrada</span>
-            <p>Seu navegador não tem nenhuma voz "(Natural)"/"Online" em português instalada. No <strong>Windows</strong>, abra esta página no <strong>Microsoft Edge</strong> (já vem instalado, é grátis) — ele libera vozes neurais em português automaticamente. Não usamos vozes robóticas nem do Google como substituto.</p>
-          </div>
+          <p class="hint" id="ttsHint">Vozes neurais de verdade (Francisca, Thalita, Antonio, Duarte…) — nunca voz de robô, nunca voz do Google. Funciona no Chrome, Edge e celular. Na 1ª geração do dia o servidor pode levar até 1 minuto pra acordar.</p>
         </div>
       </section>
 
@@ -1099,18 +1106,18 @@
   <div class="toast" id="toast"></div>
   <div class="viz-tooltip" id="vizTooltip" hidden></div>
 
-  <script src="js/config.js?v=20260713e"></script>
-  <script src="js/extbridge.js?v=20260713e"></script>
-  <script src="js/app.js?v=20260713e"></script>
-  <script src="js/images.js?v=20260713e"></script>
-  <script src="js/tools2.js?v=20260713e"></script>
-  <script src="js/meta.js?v=20260713e"></script>
-  <script src="js/library.js?v=20260713e"></script>
-  <script src="js/ocr.js?v=20260713e"></script>
-  <script src="js/modelar.js?v=20260713e"></script>
-  <script src="js/auth.js?v=20260713e"></script>
-  <script src="js/tokens.js?v=20260713e"></script>
-  <script src="js/payments.js?v=20260713e"></script>
-  <script src="js/mirror.js?v=20260713e"></script>
+  <script src="js/config.js?v=20260714a"></script>
+  <script src="js/extbridge.js?v=20260714a"></script>
+  <script src="js/app.js?v=20260714a"></script>
+  <script src="js/images.js?v=20260714a"></script>
+  <script src="js/tools2.js?v=20260714a"></script>
+  <script src="js/meta.js?v=20260714a"></script>
+  <script src="js/library.js?v=20260714a"></script>
+  <script src="js/ocr.js?v=20260714a"></script>
+  <script src="js/modelar.js?v=20260714a"></script>
+  <script src="js/auth.js?v=20260714a"></script>
+  <script src="js/tokens.js?v=20260714a"></script>
+  <script src="js/payments.js?v=20260714a"></script>
+  <script src="js/mirror.js?v=20260714a"></script>
 </body>
 </html>

@@ -117,6 +117,7 @@ function adToOffer(a, cc) {
     status: "escalando",
     statusActive: a.active !== false,
     platforms: a.platforms || [],
+    searchTotal: a.searchTotal || null,
     versionsCount: a.versions || null,
     multiVersions: !!a.multiVersions,
     cta: a.cta || "",
@@ -220,6 +221,17 @@ function parsePtDate(p) {
   const d = new Date(p);
   return isNaN(d.getTime()) ? null : d;
 }
+
+// preço da oferta com fallback na copy — compartilhado por card, preview e Modelar
+function offerPriceOf(o) {
+  if (o && o.price != null && !isNaN(o.price) && o.price > 0) return +o.price;
+  const d = (o && (o.desc || "")) || "";
+  const pm = d.match(/R\$\s*(\d{1,3}(?:[.,]\d{1,2})?)/) ||
+             d.match(/(?:por\s+)?(?:apenas|somente|s[óo])\s+(\d{1,3}[.,]\d{2})/i);
+  if (pm) { const v = parseFloat(pm[1].replace(",", ".")); if (v >= 1 && v <= 9999) return v; }
+  return null;
+}
+window.offerPriceOf = offerPriceOf;
 
 function fblPlatIcons(o) {
   const list = (o.platforms && o.platforms.length)
@@ -521,13 +533,7 @@ function renderPreviewModal(o, ctx = {}) {
   }
 
   const published = o.published || (o.firstSeen ? o.firstSeen.split("-").reverse().join("/") : null);
-  let priceVal = (o.price && !isNaN(o.price) && o.price > 0) ? +o.price : null;
-  if (priceVal == null && o.desc) {
-    // fallback: caça o preço na própria copy ("por apenas R$ 9,90", "apenas 27,00")
-    const pm = o.desc.match(/R\$\s*(\d{1,3}(?:[.,]\d{1,2})?)/) ||
-               o.desc.match(/(?:por\s+)?(?:apenas|somente|s[óo])\s+(\d{1,3}[.,]\d{2})/i);
-    if (pm) { const v = parseFloat(pm[1].replace(",", ".")); if (v >= 1 && v <= 9999) priceVal = v; }
-  }
+  const priceVal = offerPriceOf(o); // campo → copy ("por apenas R$ 9,90")
   const ticket = priceVal != null ? "R$ " + priceVal.toFixed(2).replace(".", ",") : null;
 
   let score = 0;
@@ -623,7 +629,7 @@ function renderPreviewModal(o, ctx = {}) {
             <div><span>Ticket</span><b class="fb-ticket">${ticket || '<span class="fb-unk">não detectado</span>'}</b></div>
             <div><span>Publicado em</span><b>${published || '<span class="fb-unk">—</span>'}</b></div>
             <div><span>Dias rodando</span><b>${days ? `🟢 ${days} dias` : '<span class="fb-unk">—</span>'}</b></div>
-            <div><span>Nº de anúncios</span><b>${o.ads != null ? o.ads : '<span class="fb-unk">ver ↗</span>'}</b></div>
+            <div><span>Nº de anúncios</span><b>${o.ads != null ? o.ads : (o.searchTotal ? `~${escHtml(String(o.searchTotal))} nesse nicho` : '<span class="fb-unk">ver ↗</span>')}</b></div>
             <div><span>Criativos</span><b>${galleryItems.length || '<span class="fb-unk">—</span>'}</b></div>
           </div>
 

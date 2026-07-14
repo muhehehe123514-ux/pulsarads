@@ -73,9 +73,15 @@ async function mirrorSearch(queries, country) {
       let res = { ads: [] };
       try { res = await chrome.tabs.sendMessage(tab.id, { cmd: "scrapeFb" }); } catch (_) {}
       if (res && res.total && !total) total = res.total;
+      const qTotal = res && res.total ? parseInt(String(res.total).replace(/\D/g, ""), 10) || null : null;
       (res && res.ads || []).forEach((a) => {
         const k = a.libraryId || (a.page + "|" + a.name);
-        if (!seen.has(k)) { seen.add(k); a.country = country; a.query = q; a.libUrl = url; all.push(a); }
+        if (!seen.has(k)) {
+          seen.add(k);
+          a.country = country; a.query = q; a.libUrl = url;
+          a.searchTotal = qTotal; // "~250 resultados" desse termo na Ad Library
+          all.push(a);
+        }
       });
     } catch (_) {}
     finally { if (tab) { try { await chrome.tabs.remove(tab.id); } catch (_) {} } }

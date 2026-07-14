@@ -1027,6 +1027,56 @@ $("#crRenderStyle").innerHTML = Object.entries(CR_RENDER_STYLES).map(([k, v], i)
 // texto que trava a IA de renderizar QUALQUER letra/número — repetido no início E no fim,
 // porque modelos de imagem tendem a ignorar restrições que aparecem só uma vez.
 const NO_TEXT_LOCK = "absolutamente sem nenhum texto, sem letras, sem números, sem palavras, sem tipografia, sem logotipo, sem marca d'água, sem legendas, sem assinatura — a imagem deve ficar 100% limpa de qualquer caractere escrito";
+// com imagem de referência (logo/produto), o texto DA referência pode existir — mas nada novo
+const NO_TEXT_LOCK_REF = "preserve o logotipo/texto que JÁ EXISTE na imagem de referência exatamente como ele é, sem distorcer nenhuma letra; fora isso, não crie NENHUM texto, número ou palavra nova";
+// anatomia: nem membro a mais, nem membro a menos
+const ANATOMY_LOCK = "anatomia perfeita quando houver pessoas: exatamente 2 braços, 2 mãos com 5 dedos cada, 2 pernas, corpos completos e proporcionais, rostos simétricos — nenhum membro extra, nenhum membro faltando, nenhum dedo a mais ou a menos, nenhuma pessoa duplicada";
+
+// ---------- Imagem de REFERÊNCIA (hospedada no backend por 30 min) ----------
+let crAiRefUrl = "";
+$("#btnCrAiRef")?.addEventListener("click", () => $("#crAiRefFile")?.click());
+$("#btnCrAiRefClear")?.addEventListener("click", () => {
+  crAiRefUrl = "";
+  $("#crAiRefPreview").hidden = true;
+  $("#crAiRefFile").value = "";
+  toast("Referência removida ✕");
+});
+$("#crAiRefFile")?.addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const prev = $("#crAiRefPreview");
+  const st = $("#crAiRefStatus");
+  prev.hidden = false;
+  st.textContent = "enviando…";
+  crAiRefUrl = "";
+  try {
+    // comprime pra no máx 1024px (rápido de subir e suficiente pra IA)
+    const bmp = await createImageBitmap(f);
+    const scale = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(bmp.width * scale);
+    cv.height = Math.round(bmp.height * scale);
+    cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
+    const dataUrl = cv.toDataURL("image/jpeg", 0.87);
+    $("#crAiRefThumb").src = dataUrl;
+    const base = window.PULSAR_BACKEND || "";
+    if (!base) throw new Error("backend não configurado");
+    const r = await fetch(base + "/api/upload-ref", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: dataUrl }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.url) throw new Error(j.error || "HTTP " + r.status);
+    crAiRefUrl = j.url;
+    st.textContent = "✅ referência ativa (30 min)";
+    toast("Referência enviada 🖼️ — a IA vai seguir essa base");
+    if ($("#crAiPrompt").value.trim()) $("#crAiPrompt").value = buildAiPrompt();
+  } catch (err) {
+    st.textContent = "❌ falhou — tente de novo";
+    toast("Não consegui enviar a referência 😕 " + (err.message || ""));
+  }
+});
 
 // ---------- Criador de prompts PROFISSIONAIS (imagem) ----------
 function buildAiPrompt() {
@@ -1048,7 +1098,12 @@ function buildAiPrompt() {
 
   // trava de "sem texto" no INÍCIO e no FIM — IA de imagem distorce texto,
   // então a imagem sai limpa e o título entra depois no 🎨 Estúdio ao lado.
-  return `${cap(NO_TEXT_LOCK)}. ${scene} IMPORTANTE, sem exceções: ${NO_TEXT_LOCK}, sem mãos ou dedos deformados, sem membros extras, sem rostos distorcidos ou duplicados, sem objetos derretidos.`;
+  // Com referência: o logo/texto da referência é preservado; nada NOVO é escrito.
+  const textLock = crAiRefUrl ? NO_TEXT_LOCK_REF : NO_TEXT_LOCK;
+  const refLead = crAiRefUrl
+    ? "Use a imagem de referência fornecida como BASE FIEL da criação: mantenha o logotipo, as cores, as formas e a identidade visual exatamente como estão na referência, apenas aplicando o estilo pedido em volta. "
+    : "";
+  return `${refLead}${cap(textLock)}. ${scene} IMPORTANTE, sem exceções: ${textLock}; ${ANATOMY_LOCK}; sem objetos derretidos ou distorcidos.`;
 }
 
 $("#btnCrAiBuild").addEventListener("click", () => {
@@ -1056,8 +1111,10 @@ $("#btnCrAiBuild").addEventListener("click", () => {
   const n = +($("#crAiCount")?.value || 1);
   toast(`Prompt profissional criado ✨${n > 1 ? ` — peça ${n} variações na IA` : ""}`);
 });
+// trocar o estilo SEMPRE recria o prompt na hora (apaga o antigo) — é só clicar em Gerar
 $("#crRenderStyle")?.addEventListener("change", () => {
-  if ($("#crAiPrompt").value.trim()) { $("#crAiPrompt").value = buildAiPrompt(); toast("Estilo aplicado ao prompt 🎨"); }
+  $("#crAiPrompt").value = buildAiPrompt();
+  toast("Prompt refeito no novo estilo 🎨 — é só gerar");
 });
 
 $$(".ai-btn[data-ai]").forEach((btn) => {
@@ -1075,14 +1132,19 @@ $$(".ai-btn[data-ai]").forEach((btn) => {
 
 // ---------- Gerador de imagem EMBUTIDO (grátis, sem login) ----------
 // usa a API pública do Pollinations (Flux); a imagem aparece direto no site
-const AI_IMG_NEGATIVE = "text, letters, words, typography, writing, numbers, caption, subtitle, logo, watermark, signature, label, sticker text, blurry, low quality, deformed hands, extra fingers, extra limbs, disfigured, distorted face, duplicate, mutated";
+const AI_IMG_NEGATIVE = "text, letters, words, typography, writing, numbers, caption, subtitle, watermark, signature, label, blurry, low quality, deformed hands, extra fingers, missing fingers, fused fingers, extra limbs, missing limbs, amputee, extra arms, extra legs, bad anatomy, malformed body, disfigured, distorted face, duplicate person, cloned face, mutated";
+const AI_IMG_NEGATIVE_REF = AI_IMG_NEGATIVE.replace("text, letters, words, typography, writing, numbers, caption, subtitle, watermark, signature, label, ", "watermark, signature, ");
 
-function pollUrl(prompt, seed, story) {
+function pollUrl(prompt, seed, story, refUrl) {
   const w = story ? 1080 : 1080;
   const h = story ? 1920 : 1080;
-  // enhance=true: o Pollinations refina o prompt no servidor (menos distorção, mais realismo)
-  // negative_prompt: reforço extra contra texto/letras renderizadas na imagem
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&private=true&enhance=true&model=flux&seed=${seed}&negative_prompt=${encodeURIComponent(AI_IMG_NEGATIVE)}`;
+  // enhance: o Pollinations refina o prompt no servidor (menos distorção, mais realismo)
+  // — mas com REFERÊNCIA o enhance reescreve demais e dilui a fidelidade, então sai.
+  // negative_prompt: reforço extra contra texto renderizado e anatomia errada.
+  const neg = refUrl ? AI_IMG_NEGATIVE_REF : AI_IMG_NEGATIVE;
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&private=true&model=flux&seed=${seed}` +
+    (refUrl ? `&image=${encodeURIComponent(refUrl)}` : `&enhance=true`) +
+    `&negative_prompt=${encodeURIComponent(neg)}`;
 }
 
 $("#btnCrAiGen")?.addEventListener("click", () => {
@@ -1101,36 +1163,48 @@ $("#btnCrAiGen")?.addEventListener("click", () => {
   const finish = () => { if (++done >= n) { btn.disabled = false; btn.textContent = label; } };
 
   for (let i = 0; i < n; i++) {
-    const seed = Math.floor(Math.random() * 1e6);
-    const url = pollUrl(prompt, seed, story);
     const card = document.createElement("div");
     card.className = "ai-result";
-    card.innerHTML = `<div class="ai-result-img"><span class="ai-spin">🎨 gerando…</span></div>`;
     box.appendChild(card);
-    const holder = card.querySelector(".ai-result-img");
-    const img = new Image();
-    img.crossOrigin = "anonymous"; // Pollinations envia CORS *, então fica limpo pro canvas/baixar
-    img.alt = "criativo gerado por IA";
-    img.onload = () => {
-      holder.innerHTML = "";
-      holder.appendChild(img);
-      card.insertAdjacentHTML("beforeend",
-        `<div class="ai-result-actions">
-          <button class="btn btn-primary btn-sm" data-ai-dl>⬇ Baixar</button>
-          <button class="btn btn-ghost btn-sm" data-ai-use>Usar no criativo</button>
-        </div>`);
-      card.dataset.url = url;
+    aiFillCard(card, prompt, story, finish, () => {
       if (!charged) { charged = true; window.spendUse(); }
-      finish();
-    };
-    img.onerror = () => {
-      holder.innerHTML = `<span class="ai-spin">❌ falhou — clique de novo</span>`;
-      finish();
-    };
-    img.src = url;
+    });
   }
   box.scrollIntoView({ behavior: "smooth", block: "nearest" });
 });
+
+// gera (ou REGENERA) uma imagem dentro de um card de resultado
+function aiFillCard(card, prompt, story, onDone, onFirstOk) {
+  const seed = Math.floor(Math.random() * 1e6);
+  const url = pollUrl(prompt, seed, story, crAiRefUrl);
+  card.innerHTML = `<div class="ai-result-img"><span class="ai-spin">🎨 gerando…</span></div>`;
+  card.dataset.prompt = prompt;
+  card.dataset.story = story ? "1" : "";
+  const holder = card.querySelector(".ai-result-img");
+  const img = new Image();
+  img.crossOrigin = "anonymous"; // Pollinations envia CORS *, então fica limpo pro canvas/baixar
+  img.alt = "criativo gerado por IA";
+  img.onload = () => {
+    holder.innerHTML = "";
+    holder.appendChild(img);
+    card.insertAdjacentHTML("beforeend",
+      `<div class="ai-result-actions">
+        <button class="btn btn-primary btn-sm" data-ai-dl>⬇ Baixar</button>
+        <button class="btn btn-ghost btn-sm" data-ai-use>Usar no criativo</button>
+        <button class="btn btn-ghost btn-sm" data-ai-regen title="Saiu com defeito (membro/objeto estranho)? Gera de novo na hora">🔁 Regenerar</button>
+      </div>`);
+    card.dataset.url = url;
+    if (onFirstOk) onFirstOk();
+    if (onDone) onDone();
+  };
+  img.onerror = () => {
+    holder.innerHTML = `<span class="ai-spin">❌ falhou — clique em 🔁</span>`;
+    card.insertAdjacentHTML("beforeend",
+      `<div class="ai-result-actions"><button class="btn btn-ghost btn-sm" data-ai-regen>🔁 Tentar de novo</button></div>`);
+    if (onDone) onDone();
+  };
+  img.src = url;
+}
 
 // baixar / usar o criativo gerado
 $("#crAiResults")?.addEventListener("click", async (e) => {
@@ -1153,6 +1227,11 @@ $("#crAiResults")?.addEventListener("click", async (e) => {
   }
   if (e.target.closest("[data-ai-use]") && img && window.setStudioImageUrl) {
     window.setStudioImageUrl(img.src);
+  }
+  if (e.target.closest("[data-ai-regen]")) {
+    if (!window.canUse()) return;
+    aiFillCard(card, card.dataset.prompt || $("#crAiPrompt").value.trim(), card.dataset.story === "1", null, () => window.spendUse());
+    toast("Regenerando com outra semente 🔁");
   }
 });
 
@@ -1262,76 +1341,121 @@ if (document.fonts?.ready) document.fonts.ready.then(renderCreative);
 renderCreative();
 
 // ============================================================
-// 12) GERADOR DE ÁUDIO — VOZ NEURAL HUMANA (motor de voz do sistema)
-// REGRA DURA: nunca toca voz do Google nem voz robótica. Só entram vozes
-// marcadas "(Natural)"/"Online"/"Neural" pelo próprio sistema operacional
-// (o Windows/Edge trazem essas de graça, sem instalar nada). Sem uma voz
-// assim disponível, a ferramenta avisa claramente em vez de usar robótica.
+// 12) GERADOR DE ÁUDIO — VOZ NEURAL HUMANA (via backend do PulsarAds)
+// O backend faz a ponte com o serviço de voz neural do Edge e devolve
+// MP3 — funciona em QUALQUER navegador (Chrome, Edge, celular), com
+// vozes femininas E masculinas e download. REGRA DURA mantida: nunca
+// voz do Google, nunca voz robótica — o fallback local só usa vozes
+// "(Natural)" do sistema; sem elas, avisa em vez de degradar.
 // ============================================================
 const synth = window.speechSynthesis;
 let voices = [];
 
-const TTS_GOOGLE_RE = /google/i;
-const TTS_NATURAL_RE = /natural|online|neural/i;
-const TTS_FEMALE_RE = /female|mulher|thalita|francisca|brenda|maria|giovanna|leila|leticia|manuela|heloisa|fernanda|joana|camila|yara|raquel|elza|luciana/i;
-const TTS_MALE_RE = /male|homem|antonio|donato|fabio|julio|ricardo|daniel|valerio|nicolau|humberto|duarte|cristiano|felipe|paulo|macerio/i;
-const TTS_TONES = { animada: { rate: 1.12, pitch: 1.1 }, normal: { rate: 1.0, pitch: 1.0 }, calma: { rate: 0.9, pitch: 0.94 } };
-
-function ttsGenderOf(v) {
-  if (TTS_FEMALE_RE.test(v.name)) return "female";
-  if (TTS_MALE_RE.test(v.name)) return "male";
-  return "unknown";
-}
-
-// só vozes 100% qualificadas: português + "(Natural)"/Online/Neural + NUNCA Google
-function ttsNaturalVoices() {
-  voices = synth ? synth.getVoices() : [];
-  return voices.filter((v) => v.lang.toLowerCase().startsWith("pt") && TTS_NATURAL_RE.test(v.name) && !TTS_GOOGLE_RE.test(v.name));
-}
+// vozes neurais servidas pelo backend — todas testadas uma a uma
+const TTS_NEURAL = {
+  female: [
+    ["pt-BR-FranciscaNeural", "Francisca — feminina 🇧🇷 ⭐"],
+    ["pt-BR-ThalitaNeural", "Thalita — feminina 🇧🇷"],
+    ["pt-BR-ThalitaMultilingualNeural", "Thalita Multilíngue — feminina 🇧🇷"],
+    ["pt-PT-RaquelNeural", "Raquel — feminina 🇵🇹"],
+  ],
+  male: [
+    ["pt-BR-AntonioNeural", "Antonio — masculina 🇧🇷 ⭐"],
+    ["pt-PT-DuarteNeural", "Duarte — masculina 🇵🇹"],
+  ],
+};
+// tom → prosódia SSML (servidor) e rate/pitch (fallback local)
+const TTS_TONES = {
+  animada: { rate: "+12%", pitch: "+6Hz", lRate: 1.12, lPitch: 1.1 },
+  normal: { rate: "+0%", pitch: "+0Hz", lRate: 1.0, lPitch: 1.0 },
+  calma: { rate: "-10%", pitch: "-4Hz", lRate: 0.9, lPitch: 0.94 },
+};
 
 function renderTtsVoiceSelect() {
   const sel = $("#ttsVoice");
-  const warn = $("#ttsNoVoiceWarn");
   if (!sel) return;
   const gender = $("#ttsGender")?.value || "female";
-  const natural = ttsNaturalVoices();
-  let list = natural.filter((v) => ttsGenderOf(v) === gender);
-  if (!list.length) list = natural; // gênero não identificado no nome: mostra as naturais que existem
-  sel.innerHTML = list.length
-    ? list.map((v) => `<option value="${escHtml(v.name)}">${escHtml(v.name.replace(/microsoft/i, "").trim())} ${/pt.?br/i.test(v.lang) ? "🇧🇷" : "🇵🇹"}</option>`).join("")
-    : `<option value="">Nenhuma voz neural disponível</option>`;
-  if (list.length) sel.value = list[0].name;
-  const btn = $("#btnTtsPlay");
-  if (btn) btn.disabled = !list.length;
-  if (warn) warn.hidden = !!natural.length;
+  sel.innerHTML = TTS_NEURAL[gender].map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
 }
-
-function loadVoices() {
-  renderTtsVoiceSelect();
-}
-if (synth) {
-  loadVoices();
-  synth.onvoiceschanged = loadVoices;
-}
+renderTtsVoiceSelect();
 $("#ttsGender")?.addEventListener("change", renderTtsVoiceSelect);
 
-$("#btnTtsPlay").addEventListener("click", () => {
-  if (!synth) return toast("Seu navegador não suporta síntese de voz 😕");
-  const text = $("#ttsInput").value.trim();
+// fallback local (sem internet/servidor): SÓ voz "(Natural)" — nunca Google
+function ttsLocalNatural() {
+  voices = synth ? synth.getVoices() : [];
+  const pt = voices.filter((v) => v.lang.toLowerCase().startsWith("pt") && /natural/i.test(v.name) && !/google/i.test(v.name));
+  const gender = $("#ttsGender")?.value || "female";
+  const FEM = /female|thalita|francisca|brenda|giovanna|leila|leticia|manuela|yara|elza|luciana|raquel|maria|fernanda/i;
+  return pt.find((v) => (gender === "female" ? FEM.test(v.name) : !FEM.test(v.name))) || pt[0] || null;
+}
+
+let ttsAudio = null;
+let ttsBlobUrl = null;
+
+$("#btnTtsPlay").addEventListener("click", async () => {
+  let text = $("#ttsInput").value.trim();
   if (!text) return toast("Escreva um texto primeiro ✍️");
-  const name = $("#ttsVoice").value;
-  const v = voices.find((v) => v.name === name);
-  if (!v) return toast("Nenhuma voz neural disponível — veja o aviso abaixo 👇");
-  synth.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.voice = v;
+  if (text.length > 1500) { text = text.slice(0, 1500); toast("Texto longo: narrando os primeiros 1.500 caracteres 🎙️"); }
+  const voice = $("#ttsVoice").value || "pt-BR-FranciscaNeural";
   const tone = TTS_TONES[$("#ttsTone")?.value] || TTS_TONES.normal;
-  u.rate = tone.rate;
-  u.pitch = tone.pitch;
-  synth.speak(u);
-  toast(`Reproduzindo 🔊 (${$("#ttsGender")?.value === "male" ? "masculina" : "feminina"}, voz neural)`);
+  const btn = $("#btnTtsPlay");
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "⏳ Gerando voz neural…";
+  if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
+  synth?.cancel();
+
+  // o Render grátis "dorme": avisa se a resposta demorar (só na 1ª vez do dia)
+  const slowNote = setTimeout(() => { btn.textContent = "⏳ Acordando o servidor de voz (até 1 min)…"; }, 6000);
+  try {
+    const base = window.PULSAR_BACKEND || "";
+    if (!base) throw new Error("backend não configurado");
+    const url = `${base}/api/tts?voice=${encodeURIComponent(voice)}&rate=${encodeURIComponent(tone.rate)}&pitch=${encodeURIComponent(tone.pitch)}&text=${encodeURIComponent(text)}`;
+    const ctrl = new AbortController();
+    const kill = setTimeout(() => ctrl.abort(), 90000);
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(kill);
+    if (!r.ok || !/audio/i.test(r.headers.get("content-type") || "")) throw new Error("HTTP " + r.status);
+    const blob = await r.blob();
+    if (ttsBlobUrl) URL.revokeObjectURL(ttsBlobUrl);
+    ttsBlobUrl = URL.createObjectURL(blob);
+    ttsAudio = new Audio(ttsBlobUrl);
+    ttsAudio.play();
+    const dl = $("#btnTtsDl");
+    if (dl) dl.hidden = false;
+    toast(`Voz neural reproduzindo 🔊 (${$("#ttsGender")?.value === "male" ? "masculina" : "feminina"})`);
+  } catch (err) {
+    // servidor indisponível: tenta a voz Natural local (nunca Google/robótica)
+    const v = ttsLocalNatural();
+    if (synth && v) {
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = v;
+      u.rate = tone.lRate;
+      u.pitch = tone.lPitch;
+      synth.speak(u);
+      toast("Servidor de voz indisponível — usando a voz Natural do seu sistema 🔊");
+    } else {
+      toast("Não consegui gerar a voz agora 😕 Verifique a internet e tente de novo em instantes.");
+    }
+  }
+  clearTimeout(slowNote);
+  btn.disabled = false;
+  btn.textContent = label;
 });
-$("#btnTtsStop").addEventListener("click", () => synth?.cancel());
+
+$("#btnTtsStop").addEventListener("click", () => {
+  if (ttsAudio) ttsAudio.pause();
+  synth?.cancel();
+});
+
+$("#btnTtsDl")?.addEventListener("click", () => {
+  if (!ttsBlobUrl) return toast("Gere a narração primeiro ▶");
+  const a = document.createElement("a");
+  a.href = ttsBlobUrl;
+  a.download = "pulsarads-narracao-" + Date.now() + ".mp3";
+  a.click();
+  toast("Narração baixada 🎧");
+});
 
 // ============================================================
 // 13) TRANSCRITOR POR VOZ (Web Speech — STT)
@@ -1536,3 +1660,34 @@ $("#btnMetaClean").addEventListener("click", () => {
     0.95
   );
 });
+
+// ============================================================
+// 14) BOTÃO ✕ LIMPAR em toda caixa de texto do app
+// ============================================================
+function initClearButtons() {
+  const fields = $$("textarea, input[type=text], input[type=url], input[type=search]")
+    .filter((el) => !el.closest(".pw-wrap") && !el.dataset.hasClear);
+  fields.forEach((el) => {
+    el.dataset.hasClear = "1";
+    const wrap = document.createElement("span");
+    wrap.className = "clear-wrap";
+    el.parentNode.insertBefore(wrap, el);
+    wrap.appendChild(el);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "clear-x";
+    btn.title = "Apagar todo o texto";
+    btn.textContent = "✕";
+    btn.tabIndex = -1;
+    wrap.appendChild(btn);
+    const sync = () => { btn.hidden = !el.value; };
+    el.addEventListener("input", sync);
+    btn.addEventListener("click", () => {
+      el.value = "";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.focus();
+    });
+    sync();
+  });
+}
+initClearButtons();

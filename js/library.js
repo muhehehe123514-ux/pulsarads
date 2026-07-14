@@ -24,8 +24,11 @@ $("#libNicheFilter").innerHTML =
   `<option value="-1">Outro</option>\n`;
 
 const libDays = (o) => {
-  if (!o.firstSeen) return 1;
-  return Math.max(1, Math.round((Date.now() - new Date(o.firstSeen + "T12:00:00").getTime()) / 86400000));
+  // a data REAL de veiculação do anúncio manda; firstSeen (dia que salvou) é só fallback
+  const pub = (typeof parsePtDate === "function" && o.published) ? parsePtDate(String(o.published).trim()) : null;
+  const base = pub || (o.firstSeen ? new Date(o.firstSeen + "T12:00:00") : null);
+  if (!base || isNaN(base.getTime())) return 1;
+  return Math.max(1, Math.round((Date.now() - base.getTime()) / 86400000));
 };
 const libSearchUrl = (o) =>
   o.url ||
@@ -71,9 +74,9 @@ function renderLibrary() {
         </div>
         ${o.notes ? `<p class="oc-notes">${escHtml(o.notes)}</p>\n` : ""}
         <div class="oc-stats">
-          <div class="oc-stat"><span class="ocs-val">${o.ads ?? "—"}</span><span class="ocs-lbl">👥 Anúncios</span></div>
+          <div class="oc-stat"><span class="ocs-val">${o.ads ?? o.versionsCount ?? (o.searchTotal ? "~" + o.searchTotal : "—")}</span><span class="ocs-lbl">👥 Anúncios</span></div>
           <div class="oc-stat"><span class="ocs-val">${libDays(o)}</span><span class="ocs-lbl">📅 Dias</span></div>
-          <div class="oc-stat"><span class="ocs-val">${o.price ? "R$ " + (+o.price).toFixed(2).replace(".", ",").replace(",00", "") : "—"}</span><span class="ocs-lbl">💵 Ticket</span></div>
+          <div class="oc-stat"><span class="ocs-val">${(() => { const v = typeof offerPriceOf === "function" ? offerPriceOf(o) : o.price; return v ? "R$ " + (+v).toFixed(2).replace(".", ",").replace(",00", "") : "—"; })()}</span><span class="ocs-lbl">💵 Ticket</span></div>
         </div>
         <div class="oc-foot">
           <span class="hint">visto ${o.firstSeen ? o.firstSeen.split("-").reverse().join("/") : "—"} · check ${o.lastChecked ? o.lastChecked.split("-").reverse().join("/") : "—"}</span>
@@ -663,6 +666,7 @@ window.libAddOffer = (o) => {
     published: o.published || null,
     statusActive: o.statusActive !== false,
     platforms: o.platforms || [],
+    searchTotal: o.searchTotal ?? null,
     versionsCount: o.versionsCount ?? null,
     multiVersions: !!o.multiVersions,
     cta: o.cta || "", domain: o.domain || "", headline: o.headline || "",

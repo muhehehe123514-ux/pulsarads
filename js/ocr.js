@@ -182,6 +182,24 @@ async function ocrPreprocessVariants(file) {
 // normaliza pra comparar/deduplicar texto entre as duas passadas
 const ocrNorm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "");
 
+// "parece texto de verdade?" — barra lixo tipo "IY", "Ti | \\ »", "MARV 2B mivEnine"
+function ocrLooksReal(t) {
+  const s = (t || "").trim();
+  if (s.length < 3) return false;
+  const chars = [...s.replace(/\s+/g, "")];
+  if (!chars.length) return false;
+  const alnum = chars.filter((c) => /[a-z0-9à-öø-ÿ]/i.test(c)).length;
+  if (alnum / chars.length < 0.62) return false; // símbolo demais (| \\ » = ~ etc.)
+  const tokens = s.split(/\s+/).filter(Boolean);
+  // token "de verdade": tem vogal, ou é número/preço, ou é sigla curta em maiúsculas
+  const good = tokens.filter((w) =>
+    /\d/.test(w) ||
+    (/[aeiouáéíóúâêôãõàü]/i.test(w) && /[a-zà-ÿ]{2,}/i.test(w)) ||
+    /^[A-Z]{2,5}[.,;:!?]?$/.test(w)
+  );
+  return good.length / tokens.length >= 0.6;
+}
+
 $("#btnOcrRun").addEventListener("click", async () => {
   if (!ocrFile) return;
   if (!window.canUse()) return;
@@ -197,20 +215,27 @@ $("#btnOcrRun").addEventListener("click", async () => {
 
     status.textContent = "Lendo parágrafos e copy…";
     const passA = await ocrRecognizePass(worker, gray, "6");
+    // qualidade > quantidade: confiança alta passa direto; média só se PARECER texto real
     let parts = (passA.data.paragraphs || [])
-      .map((p) => (p.text || "").replace(/\s*\n\s*/g, " ").replace(/\s{2,}/g, " ").trim())
-      .filter((t) => t.length > 2);
+      .filter((p) => {
+        const conf = p.confidence || 0;
+        const t = (p.text || "").replace(/\s*\n\s*/g, " ").trim();
+        return t.length > 2 && (conf >= 60 || (conf >= 25 && ocrLooksReal(t)));
+      })
+      .map((p) => (p.text || "").replace(/\s*\n\s*/g, " ").replace(/\s{2,}/g, " ").trim());
     if (!parts.length && passA.data.text) {
       parts = passA.data.text.split(/\n{2,}/)
         .map((t) => t.replace(/\s*\n\s*/g, " ").replace(/\s{2,}/g, " ").trim())
-        .filter((t) => t.length > 2);
+        .filter((t) => t.length > 2 && ocrLooksReal(t));
     }
 
     status.textContent = "Caçando texto minúsculo (selos, legendas, marcas d'água)…";
     const passB = await ocrRecognizePass(worker, bin, "11");
     const seen = new Set(parts.map(ocrNorm));
     const extra = (passB.data.lines || [])
-      .filter((l) => (l.confidence || 0) >= 35 && (l.text || "").trim().length > 1)
+      .filter((l) => (l.confidence || 0) >= 55 && ocrLooksReal(l.text))
+      .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+      .slice(0, 12) // só os 12 achados mais confiáveis — nada de chuva de lixo
       .map((l) => l.text.trim().replace(/\s{2,}/g, " "))
       .filter((t) => {
         const k = ocrNorm(t);

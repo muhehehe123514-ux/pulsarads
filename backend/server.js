@@ -255,4 +255,141 @@ app.get("/api/status", async (req, res) => {
   res.json(await effectivePlan(user));
 });
 
+/* ============================================================
+   🔊 TTS NEURAL — proxy do serviço de voz do Edge (grátis)
+   O navegador não consegue falar com esse serviço (ele exige
+   headers de extensão do Edge), então o backend faz a ponte e
+   devolve MP3. Funciona em Chrome, Edge, celular — qualquer um.
+   ============================================================ */
+const WebSocketTTS = require("ws");
+
+const TTS_VOICES = new Set([
+  "pt-BR-FranciscaNeural", "pt-BR-ThalitaNeural", "pt-BR-ThalitaMultilingualNeural",
+  "pt-BR-AntonioNeural", "pt-PT-RaquelNeural", "pt-PT-DuarteNeural",
+]);
+// o serviço rejeita versões antigas do Edge; tenta em ordem até uma passar
+const TTS_EDGE_VERSIONS = ["132.0.2957.115", "135.0.3179.54", "138.0.3351.65"];
+let ttsVerIdx = 0;
+let ttsSkewMs = 0; // desvio de relógio corrigido pelo header Date num 403
+
+function ttsGec() {
+  // BigInt obrigatório: os ticks do Windows (1.7e16) estouram o inteiro seguro do JS
+  const ticks = BigInt(Math.floor((Date.now() + ttsSkewMs) / 1000 + 11644473600));
+  const rounded = ticks - (ticks % 300n);
+  return crypto.createHash("sha256").update((rounded * 10000000n).toString() + "6A5AA1D4EAFF4E9FB37E23D68491D6F4").digest("hex").toUpperCase();
+}
+
+const ttsEscapeXml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+
+function ttsSynthesize(text, voice, rate, pitch, tryNum = 0) {
+  return new Promise((resolve, reject) => {
+    const ver = TTS_EDGE_VERSIONS[ttsVerIdx];
+    const url = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1" +
+      "?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4" +
+      "&Sec-MS-GEC=" + ttsGec() + "&Sec-MS-GEC-Version=1-" + ver +
+      "&ConnectionId=" + crypto.randomUUID().replace(/-/g, "");
+    const ws = new WebSocketTTS(url, {
+      headers: {
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache",
+        "Origin": "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+        "User-Agent": `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${ver.split(".")[0]}.0.0.0 Safari/537.36 Edg/${ver}`,
+      },
+    });
+    const chunks = [];
+    const timer = setTimeout(() => { try { ws.terminate(); } catch {} reject(new Error("timeout")); }, 30000);
+
+    ws.on("open", () => {
+      const ts = new Date(Date.now() + ttsSkewMs).toString();
+      ws.send("X-Timestamp:" + ts + "\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n" +
+        '{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}');
+      const ssml = `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='pt-BR'>` +
+        `<voice name='${voice}'><prosody pitch='${pitch}' rate='${rate}' volume='+0%'>${ttsEscapeXml(text)}</prosody></voice></speak>`;
+      ws.send("X-RequestId:" + crypto.randomUUID().replace(/-/g, "") + "\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:" + ts + "\r\nPath:ssml\r\n\r\n" + ssml);
+    });
+    ws.on("message", (data, isBinary) => {
+      if (!isBinary) {
+        if (data.toString().includes("Path:turn.end")) {
+          clearTimeout(timer);
+          ws.close();
+          resolve(Buffer.concat(chunks));
+        }
+      } else {
+        const hl = data.readUInt16BE(0);
+        if (data.slice(2, 2 + hl).toString().includes("Path:audio")) chunks.push(data.slice(2 + hl));
+      }
+    });
+    ws.on("unexpected-response", (rq, rs) => {
+      clearTimeout(timer);
+      rs.resume();
+      if (tryNum < 4) {
+        // corrige relógio e/ou tenta a próxima versão do Edge
+        if (rs.headers.date) ttsSkewMs = new Date(rs.headers.date).getTime() - Date.now();
+        if (rs.statusCode === 403 && tryNum >= 1) ttsVerIdx = (ttsVerIdx + 1) % TTS_EDGE_VERSIONS.length;
+        return resolve(ttsSynthesize(text, voice, rate, pitch, tryNum + 1));
+      }
+      reject(new Error("HTTP " + rs.statusCode));
+    });
+    ws.on("error", (e) => { clearTimeout(timer); reject(e); });
+  });
+}
+
+app.get("/api/health", (_req, res) => res.json({ ok: true, tts: true, ref: true }));
+
+/* ============================================================
+   🖼️ REFERÊNCIA DE IMAGEM pro Criativo IA
+   O gerador (Pollinations) só aceita referência por URL pública.
+   O site envia a imagem em base64, guardamos NA MEMÓRIA por 30min
+   e servimos numa URL — nada vai pra serviços de terceiros.
+   ============================================================ */
+const refStore = new Map(); // id → { buf, type, exp }
+function pruneRefs() {
+  const now = Date.now();
+  for (const [id, r] of refStore) if (r.exp < now) refStore.delete(id);
+  // trava de memória: mantém no máx. 40 imagens (~30 MB no pior caso)
+  while (refStore.size > 40) refStore.delete(refStore.keys().next().value);
+}
+
+app.post("/api/upload-ref", express.json({ limit: "4mb" }), (req, res) => {
+  try {
+    const data = String(req.body?.data || "");
+    const m = data.match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/);
+    if (!m) return res.status(400).json({ error: "envie { data: dataURL de imagem png/jpeg/webp }" });
+    const buf = Buffer.from(m[2], "base64");
+    if (buf.length > 2_500_000) return res.status(413).json({ error: "imagem grande demais (máx ~2,5 MB)" });
+    pruneRefs();
+    const id = crypto.randomBytes(9).toString("hex");
+    refStore.set(id, { buf, type: m[1], exp: Date.now() + 30 * 60 * 1000 });
+    const base = PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
+    res.json({ url: `${base}/api/ref/${id}`, expiresInMin: 30 });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/ref/:id", (req, res) => {
+  const r = refStore.get(String(req.params.id).replace(/\.[a-z]+$/, ""));
+  if (!r || r.exp < Date.now()) return res.status(404).json({ error: "referência expirou — envie de novo" });
+  res.set({ "Content-Type": r.type, "Cache-Control": "public, max-age=1800" });
+  res.send(r.buf);
+});
+
+app.get("/api/tts", async (req, res) => {
+  try {
+    const text = String(req.query.text || "").trim().slice(0, 1500);
+    if (!text) return res.status(400).json({ error: "texto vazio" });
+    const voice = TTS_VOICES.has(String(req.query.voice)) ? String(req.query.voice) : "pt-BR-FranciscaNeural";
+    const rate = /^[+-]\d{1,2}%$/.test(String(req.query.rate)) ? String(req.query.rate) : "+0%";
+    const pitch = /^[+-]\d{1,2}Hz$/.test(String(req.query.pitch)) ? String(req.query.pitch) : "+0Hz";
+    const audio = await ttsSynthesize(text, voice, rate, pitch);
+    if (!audio.length) return res.status(502).json({ error: "áudio vazio" });
+    res.set({ "Content-Type": "audio/mpeg", "Cache-Control": "no-store" });
+    res.send(audio);
+  } catch (e) {
+    console.error("tts", e.message);
+    res.status(502).json({ error: "falha na síntese de voz: " + e.message });
+  }
+});
+
 app.listen(PORT, () => console.log(`PulsarAds backend v3 on :${PORT} (MP ${client ? "ON" : "OFF"}, DB ${hasDB ? "Upstash" : "arquivo"})`));
